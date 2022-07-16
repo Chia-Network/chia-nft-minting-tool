@@ -14,6 +14,7 @@ dev_dependencies = [
     "flake8",
     "mypy",
     "black",
+    "faker",
 ]
 
 setup(
