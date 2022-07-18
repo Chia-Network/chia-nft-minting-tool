@@ -1,5 +1,7 @@
 import asyncio
+import csv
 import time
+import pickle
 from secrets import token_bytes
 from typing import Any, Awaitable, Callable, Dict, List
 
@@ -22,6 +24,7 @@ from chia.types.spend_bundle import SpendBundle
 from chia.util.bech32m import encode_puzzle_hash
 from chia.util.byte_types import hexstr_to_bytes
 from chia.util.ints import uint16, uint32, uint64
+from chia.util import default_root
 from chia.wallet.did_wallet.did_info import DID_HRP
 from chia.wallet.did_wallet.did_wallet import DIDWallet
 from chia.wallet.nft_wallet.nft_wallet import NFTWallet
@@ -29,6 +32,7 @@ from chia.wallet.util.compute_memos import compute_memos
 from chia.wallet.util.wallet_types import WalletType
 from tests.time_out_assert import time_out_assert, time_out_assert_not_none
 
+from chianft.util.mint import Minter, read_metadata_csv
 
 async def tx_in_pool(mempool: MempoolManager, tx_id: bytes32) -> bool:
     tx = mempool.get_spendbundle(tx_id)
@@ -36,13 +40,12 @@ async def tx_in_pool(mempool: MempoolManager, tx_id: bytes32) -> bool:
         return False
     return True
 
-
 @pytest.mark.parametrize(
     "trusted",
     [True],
 )
 @pytest.mark.asyncio
-async def test_nft_mint_from_did_rpc(two_wallet_nodes: Any, trusted: Any, self_hostname) -> None:
+async def test_nft_mint_from_did_rpc(tmp_path, two_wallet_nodes: Any, trusted: Any, self_hostname) -> None:
     num_blocks = 5
     full_nodes, wallets = two_wallet_nodes
     full_node_api: FullNodeSimulator = full_nodes[0]
@@ -75,7 +78,7 @@ async def test_nft_mint_from_did_rpc(two_wallet_nodes: Any, trusted: Any, self_h
         await full_node_api.farm_new_transaction_block(FarmNewBlockProtocol(ph_maker))
         await full_node_api.farm_new_transaction_block(FarmNewBlockProtocol(ph_taker))
     await full_node_api.farm_new_transaction_block(FarmNewBlockProtocol(ph_token))
-
+    
     funds = sum(
         [calculate_pool_reward(uint32(i)) + calculate_base_farmer_reward(uint32(i)) for i in range(1, num_blocks)]
     )
@@ -116,8 +119,8 @@ async def test_nft_mint_from_did_rpc(two_wallet_nodes: Any, trusted: Any, self_h
         config,
         connect_to_daemon=False,
     )
-    client = await WalletRpcClient.create(self_hostname, test_rpc_port, bt.root_path, config)
-    client_node = await FullNodeRpcClient.create(self_hostname, test_rpc_port_node, bt.root_path, config)
+    wallet_client = await WalletRpcClient.create(self_hostname, test_rpc_port, bt.root_path, config)
+    node_client = await FullNodeRpcClient.create(self_hostname, test_rpc_port_node, bt.root_path, config)
 
     did_wallet_maker: DIDWallet = await DIDWallet.create_new_did_wallet(
         wallet_node_maker.wallet_state_manager, wallet_maker, uint64(1)
@@ -149,76 +152,59 @@ async def test_nft_mint_from_did_rpc(two_wallet_nodes: Any, trusted: Any, self_h
     for _ in range(1, num_blocks):
         await full_node_api.farm_new_transaction_block(FarmNewBlockProtocol(ph_token))
 
-    sample = {
-        "hash": bytes32(token_bytes(32)).hex(),
-        "uris": ["https://data.com/1234"],
-        "meta_hash": bytes32(token_bytes(32)).hex(),
-        "meta_uris": ["https://meatadata.com/1234"],
-        "license_hash": bytes32(token_bytes(32)).hex(),
-        "license_uris": ["https://license.com/1234"],
-        "series_numer": 1,
-        "series_total": 1,
-    }
-
     n = 50
-    metadata_list = [sample for x in range(n)]
-    target_list = [encode_puzzle_hash((ph_taker), "xch") for x in range(n)]
+    chunk = 25
+    header = ["hash", "uris", "meta_hash", "meta_uris", "license_hash", "license_uris", "series_number", "series_total", "target"]
+    sample_metadata = [
+        [
+         bytes32(token_bytes(32)).hex(),
+         "https://data.com/1234",
+         bytes32(token_bytes(32)).hex(),
+         "https://meatadata.com/1234",
+         bytes32(token_bytes(32)).hex(),
+         "https://license.com/1234",
+         i,
+         n,
+         encode_puzzle_hash((ph_taker), "xch")
+        ] for i in range(n)]
+    
+    input_file = tmp_path / "sample_metadata.csv"
+    output_file = tmp_path / "sample_spend_bundles.csv"
+    with open(input_file, "w") as f:
+        writer = csv.writer(f)
+        writer.writerows([header] + sample_metadata)
+        
     royalty_address = encode_puzzle_hash(bytes32(token_bytes(32)), "xch")
     royalty_percentage = 300
+
+    minter = Minter(wallet_client, node_client)
+    await minter.connect()
+    bal = await minter.wallet_client.get_wallet_balance(wallet_id=1)
+
+
+    spend_bundles = await minter.create_spend_bundles(
+        input_file,
+        output_file,
+        minter.did_wallet_id,
+        royalty_address=royalty_address,
+        royalty_percentage=royalty_percentage,
+        has_targets=True,
+    )
+    assert len(spend_bundles) == int(n/chunk)
+    with open(output_file, "wb") as f:
+        pickle.dump(spend_bundles, f)
+    assert output_file.exists()
+
     fee = 100
-    required_amount = n + (fee * n)
-    xch_coins = await client.select_coins(amount=required_amount, wallet_id=wallet_maker.id())
-    funding_coin = xch_coins[0]
-    assert funding_coin.amount >= required_amount
-    funding_coin_dict = xch_coins[0].to_json_dict()
-    chunk = 10
-    next_coin = funding_coin
-    did_coin = (await client.select_coins(amount=1, wallet_id=2))[0]
-    did_lineage_parent = None
     spends = []
-
-    for i in range(0, n, chunk):
-        resp = await client.did_mint_nfts(
-            wallet_id=did_wallet_maker.id(),
-            metadata_list=metadata_list[i : i + chunk],
-            target_list=target_list[i : i + chunk],
-            royalty_percentage=royalty_percentage,
-            royalty_address=royalty_address,
-            starting_num=i + 1,
-            max_num=n,
-            xch_coins=next_coin.to_json_dict(),
-            xch_change_ph=funding_coin_dict["puzzle_hash"],
-            did_coin=did_coin.to_json_dict(),
-            did_lineage_parent=did_lineage_parent,
-            fee=fee,
-        )
-        assert resp["success"]
-        sb = SpendBundle.from_json_dict(resp["spend_bundle"])
-        did_lineage_parent = [cn for cn in sb.removals() if cn.name() == did_coin.name()][0].parent_coin_info.hex()
-        did_coin = [cn for cn in sb.additions() if (cn.parent_coin_info == did_coin.name()) and (cn.amount == 1)][0]
-        spends.append(sb)
-        xch_adds = [c for c in sb.additions() if c.puzzle_hash == funding_coin.puzzle_hash]
-        assert len(xch_adds) == 1
-        next_coin = xch_adds[0]
-
-    for sb in spends:
-        resp = await client_node.push_tx(sb)
-        assert resp["success"]
-        await full_node_api.farm_new_transaction_block(FarmNewBlockProtocol(ph_token))
-        await asyncio.sleep(2)
-
-    for _ in range(1, num_blocks):
-        await full_node_api.farm_new_transaction_block(FarmNewBlockProtocol(ph_token))
-
-    async def get_taker_nfts():
-        nfts = (await api_taker.nft_get_nfts({"wallet_id": nft_wallet_taker["wallet_id"]}))["nft_list"]
-        return len(nfts)
-
-    await time_out_assert(n * 2, get_taker_nfts, n)
-
-    client.close()
-    client_node.close()
-    await client.await_closed()
-    await client_node.await_closed()
+    with open(output_file, "rb") as f:
+        spends_bytes = pickle.load(f)
+    for spend_bytes in spends_bytes:
+        spends.append(SpendBundle.from_bytes(spend_bytes))    
+    
+    wallet_client.close()
+    node_client.close()
+    await wallet_client.await_closed()
+    await node_client.await_closed()
     await rpc_cleanup()
     await rpc_cleanup_node()
