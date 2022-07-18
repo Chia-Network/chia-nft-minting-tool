@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import csv
+import dataclasses
 from functools import wraps
 import logging
 import sys
@@ -31,9 +32,9 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-config = load_config(Path(DEFAULT_ROOT_PATH), "config.yaml")
-testnet_agg_sig_data = config["network_overrides"]["constants"]["testnet10"]["AGG_SIG_ME_ADDITIONAL_DATA"]
-DEFAULT_CONSTANTS = DEFAULT_CONSTANTS.replace_str_to_bytes(**{"AGG_SIG_ME_ADDITIONAL_DATA": testnet_agg_sig_data})
+# config = load_config(Path(DEFAULT_ROOT_PATH), "config.yaml")
+# testnet_agg_sig_data = config["network_overrides"]["constants"]["testnet10"]["AGG_SIG_ME_ADDITIONAL_DATA"]
+# DEFAULT_CONSTANTS = DEFAULT_CONSTANTS.replace_str_to_bytes(**{"AGG_SIG_ME_ADDITIONAL_DATA": testnet_agg_sig_data})
 
 
 class Minter:
@@ -60,6 +61,7 @@ class Minter:
             )
         if fingerprint:
             await self.wallet_client.log_in(fingerprint)
+
         xch_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.STANDARD_WALLET)
         did_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.DECENTRALIZED_ID)
         self.xch_wallet_id = xch_wallets[0]["id"]
@@ -105,6 +107,43 @@ class Minter:
             else:
                 await asyncio.sleep(1)
 
+    async def create_fee_tx(self, fee: int, spent_coins: List[Coin]) -> SpendBundle:
+        xch_coins = [coin.to_json_dict() for coin in spent_coins if coin.amount > 1]
+        address = await self.wallet_client.get_next_address(self.xch_wallet_id, new_address=True)
+        ph = decode_puzzle_hash(address)
+        fee_coins = await self.wallet_client.select_coins(amount=fee, wallet_id=self.xch_wallet_id, exclude=xch_coins)
+        assert fee_coins is not None
+        if any(item in xch_coins for item in fee_coins):
+            raise ValueError("Selected coin for fee conflicts with funding coin. Select a different coin")
+        fee_tx = await self.wallet_client.create_signed_transaction(
+            additions=[{"amount": 0, "puzzle_hash": ph}],
+            coins=fee_coins,
+            fee=fee,
+        )
+        return fee_tx
+
+    async def estimate_fee(self, spend_bundle_cost: int) -> int:
+        mempool_dict = await self.node_client.get_all_mempool_items()
+        blockchain_state = await self.node_client.get_blockchain_state()
+        block_max_cost = blockchain_state["block_max_cost"]
+        mempool_max_cost = blockchain_state["mempool_max_total_cost"]
+        mempool_cost = blockchain_state["mempool_cost"]
+        if mempool_cost + spend_bundle_cost <= block_max_cost:
+            fee = 1
+        else:
+            sorted_txs = sorted(mempool_dict.values(), key=lambda d: d["fee"]//d["cost"])
+            cost_sum = 0
+            fee_sum = 0
+            for tx in sorted_txs:
+                if cost_sum >= spend_bundle_cost:
+                    break
+                cost_sum += tx["cost"]
+                fee_sum += tx["fee"]
+            min_fee_per_cost = (fee_sum + 1) // cost_sum
+            fee = int(spend_bundle_cost * min_fee_per_cost)
+        return fee
+
+
     async def create_spend_bundles(
         self,
         metadata_input: Path,
@@ -145,20 +184,25 @@ class Minter:
             did_coin = [c for c in sb.additions() if (c.parent_coin_info == did_coin.name()) and (c.amount == 1)][0]
         return spend_bundles
 
-    async def submit_spend_bundles(self, spend_bundles: List[SpendBundle]) -> None:
+    async def submit_spend_bundles(self, spend_bundles: List[SpendBundle], fee_per_cost: Optional[int] = None) -> None:
         MAX_COST = 11000000000
         for i, sb in enumerate(spend_bundles):
             sb_cost = 0
             for spend in sb.coin_spends:
                 cost, _ = spend.puzzle_reveal.to_program().run_with_cost(MAX_COST, spend.solution.to_program())
                 sb_cost += cost
-
-            print("Submitting SB with cost: %s" % sb_cost)
-            resp = await self.node_client.push_tx(sb)
+            if fee_per_cost is None:
+                fee = await self.estimate_fee(sb_cost)
+            else:
+                fee = sb_cost * fee_per_cost
+            fee_tx = await self.create_fee_tx(fee, sb.removals())
+            final_sb = SpendBundle.aggregate([fee_tx.spend_bundle, sb])
+            final_tx = dataclasses.replace(fee_tx, spend_bundle=final_sb)
+            resp = await self.node_client.push_tx(final_tx.spend_bundle)
             assert resp["success"]
-            print("SB successfully added to mempool")
+            print("SB successfully added to mempool: Cost: %s  Fee %s"  % (sb_cost, fee))
             while True:
-                in_mempool, tx_id = await self.get_tx_from_mempool(sb.name())
+                in_mempool, tx_id = await self.get_tx_from_mempool(final_sb.name())
                 if in_mempool:
                     break
 

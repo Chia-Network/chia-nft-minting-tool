@@ -7,7 +7,7 @@ import os
 import shutil
 from functools import wraps
 
-from typing import List, Optional
+from typing import List, Optional, Any
 from pathlib import Path
 
 from chianft import __version__
@@ -37,7 +37,7 @@ def monkey_patch_click() -> None:
 @click.pass_context
 def cli(ctx: click.Context) -> None:
     ctx.ensure_object(dict)
-
+    
 
 @cli.command("create-mint-spend-bundles", short_help="Create a set of spend bundles for minting NFTs")
 @click.argument("metadata_input", nargs=1, required=True, type=click.Path(exists=True))
@@ -133,12 +133,11 @@ async def submit_spend_bundles_cmd(
         spends_bytes = pickle.load(f)
     for spend_bytes in spends_bytes:
         spends.append(SpendBundle.from_bytes(spend_bytes))
-
+    
     minter = Minter()
     await minter.connect(fingerprint=fingerprint)
     await minter.submit_spend_bundles(spends)
     await minter.close()
-
 
 
 def main() -> None:
