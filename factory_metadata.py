@@ -26,7 +26,7 @@ async def create_nft_sample() -> List[Any]:
         fake.url(),
         1,  # edition_number
         1,  # edition_count
-        encode_puzzle_hash(bytes32(token_bytes(32)), "txch"),  # Target
+        # encode_puzzle_hash(bytes32(token_bytes(32)), "txch"),  # Target
     ]
     return sample
 
@@ -35,7 +35,7 @@ async def create_target_sample() -> List[Any]:
 
 async def main() -> None:
     count = 100
-    header = ["hash", "uris", "uris", "meta_hash", "meta_uris", "meta_uris", "license_hash", "license_uris", "license_uris", "license_uris", "series_number", "series_total", "target"]
+    header = ["hash", "uris", "uris", "meta_hash", "meta_uris", "meta_uris", "license_hash", "license_uris", "license_uris", "license_uris", "series_number", "series_total"]
     coros = [create_nft_sample() for _ in range(count)]
     data = await asyncio.gather(*coros)
     with open("metadata.csv", "w") as f:

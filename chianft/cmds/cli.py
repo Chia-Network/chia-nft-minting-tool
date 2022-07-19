@@ -80,7 +80,7 @@ async def create_spend_bundles_cmd(
     wallet_id: int,
     royalty_address: Optional[str] = None,
     royalty_percentage: Optional[int] = None,
-    has_targets: Optional[bool] = True,
+    has_targets: Optional[bool] = False,
     fingerprint: Optional[int] = None,
 ):
     """
@@ -113,6 +113,12 @@ async def create_spend_bundles_cmd(
     help="The fee (in mojos) per cost for each spend bundle",
 )
 @click.option(
+    "-o",
+    "--create-sell-offer",
+    required=False,
+    help="Create an offer for each created NFT at the specified price."
+)
+@click.option(
     "-p",
     "--fingerprint",
     required=False,
@@ -122,6 +128,7 @@ async def create_spend_bundles_cmd(
 async def submit_spend_bundles_cmd(
     bundle_input: Path,
     fee_per_cost: Optional[int] = 0,
+    create_sell_offer: Optional[int] = None,
     fingerprint: Optional[int] = None,
 ) -> None:
     """
@@ -136,7 +143,11 @@ async def submit_spend_bundles_cmd(
     
     minter = Minter()
     await minter.connect(fingerprint=fingerprint)
-    await minter.submit_spend_bundles(spends, int(fee_per_cost))
+    await minter.submit_spend_bundles(
+        spends,
+        int(fee_per_cost),
+        create_sell_offer=int(create_sell_offer)
+    )
     await minter.close()
 
 

@@ -27,6 +27,8 @@ from chia.util.default_root import DEFAULT_ROOT_PATH
 from chia.util.ints import uint16, uint64
 from chia.wallet.puzzles.load_clvm import load_clvm
 from chia.wallet.util.wallet_types import WalletType
+from chia.wallet.nft_wallet.nft_info import NFT_HRP, NFTInfo
+from chia.wallet.did_wallet.did_wallet_puzzles import LAUNCHER_PUZZLE_HASH
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -63,8 +65,10 @@ class Minter:
             await self.wallet_client.log_in(fingerprint)
         xch_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.STANDARD_WALLET)
         did_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.DECENTRALIZED_ID)
+        nft_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.NFT)
         self.xch_wallet_id = xch_wallets[0]["id"]
         self.did_wallet_id = did_wallets[0]["id"]
+        self.nft_wallet_id = nft_wallets[0]["id"]
 
     async def close(self) -> None:
         if self.node_client:
@@ -162,9 +166,19 @@ class Minter:
             did_coin = [c for c in sb.additions() if (c.parent_coin_info == did_coin.name()) and (c.amount == 1)][0]
         return spend_bundles
 
-    async def submit_spend_bundles(self, spend_bundles: List[SpendBundle], fee_per_cost: Optional[int] = None) -> None:
+    async def submit_spend_bundles(
+        self,
+        spend_bundles: List[SpendBundle],
+        fee_per_cost: Optional[int] = None,
+        create_sell_offer: Optional[int] = None,
+    ) -> None:
         MAX_COST = 11000000000
+        if create_sell_offer:
+            Path('offers').mkdir(parents=True, exist_ok=True)
+            
         for i, sb in enumerate(spend_bundles):
+            complete = i
+            queued = len(spend_bundles) - complete
             sb_cost = 0
             for spend in sb.coin_spends:
                 cost, _ = spend.puzzle_reveal.to_program().run_with_cost(MAX_COST, spend.solution.to_program())
@@ -173,26 +187,39 @@ class Minter:
             fee = sb_cost * fee_per_cost
             fee_tx = await self.create_fee_tx(fee, sb.removals())
             final_sb = SpendBundle.aggregate([fee_tx.spend_bundle, sb])
+            launchers = [coin for coin in sb.removals() if coin.puzzle_hash == LAUNCHER_PUZZLE_HASH]
             final_tx = dataclasses.replace(fee_tx, spend_bundle=final_sb)
             try:
                 resp = await self.node_client.push_tx(final_sb)
             except ValueError as err:
                 if "DOUBLE_SPEND" in err.args[0]["error"]:
-                    print("SpendBundle was already submitted, trying next one")
+                    print("SpendBundle was already submitted, skipping")
                     continue
                 else:
                     print(err)
                     return
 
             assert resp["success"]
-            print("SB successfully added to mempool: Cost: %s  Fee %s"  % (sb_cost, fee))
+            
             while True:
                 in_mempool, tx_id = await self.get_tx_from_mempool(final_sb.name())
                 if in_mempool:
+                    print("Queued: %s Mempool: 1 Complete: %s"  % (queued-1, complete))
                     break
-
             await self.wait_tx_confirmed(tx_id)
             await asyncio.sleep(2)
+        
+            if create_sell_offer:
+                offers = []
+                for launcher in launchers:
+                    info = NFTInfo.from_json_dict(
+                        (await self.wallet_client.get_nft_info(launcher.name().hex()))["nft_info"]
+                    )
+                    offer_dict = {info.launcher_id.hex(): -1, self.xch_wallet_id: create_sell_offer}
+                    offer, tr = await self.wallet_client.create_offer_for_ids(offer_dict, fee=0)
+                    filepath = "offers/{}.offer".format(launcher.name().hex())
+                    with open(Path(filepath), "w") as file:
+                        file.write(offer.to_bech32())
 
 
 def read_metadata_csv(
