@@ -61,7 +61,6 @@ class Minter:
             )
         if fingerprint:
             await self.wallet_client.log_in(fingerprint)
-
         xch_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.STANDARD_WALLET)
         did_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.DECENTRALIZED_ID)
         self.xch_wallet_id = xch_wallets[0]["id"]
@@ -122,27 +121,6 @@ class Minter:
         )
         return fee_tx
 
-    async def estimate_fee(self, spend_bundle_cost: int) -> int:
-        mempool_dict = await self.node_client.get_all_mempool_items()
-        blockchain_state = await self.node_client.get_blockchain_state()
-        block_max_cost = blockchain_state["block_max_cost"]
-        mempool_max_cost = blockchain_state["mempool_max_total_cost"]
-        mempool_cost = blockchain_state["mempool_cost"]
-        if mempool_cost + spend_bundle_cost <= block_max_cost:
-            fee = 1
-        else:
-            sorted_txs = sorted(mempool_dict.values(), key=lambda d: d["fee"]//d["cost"])
-            cost_sum = 0
-            fee_sum = 0
-            for tx in sorted_txs:
-                if cost_sum >= spend_bundle_cost:
-                    break
-                cost_sum += tx["cost"]
-                fee_sum += tx["fee"]
-            min_fee_per_cost = (fee_sum + 1) // cost_sum
-            fee = int(spend_bundle_cost * min_fee_per_cost)
-        return fee
-
 
     async def create_spend_bundles(
         self,
@@ -191,14 +169,21 @@ class Minter:
             for spend in sb.coin_spends:
                 cost, _ = spend.puzzle_reveal.to_program().run_with_cost(MAX_COST, spend.solution.to_program())
                 sb_cost += cost
-            if fee_per_cost is None:
-                fee = await self.estimate_fee(sb_cost)
-            else:
-                fee = sb_cost * fee_per_cost
+
+            fee = sb_cost * fee_per_cost
             fee_tx = await self.create_fee_tx(fee, sb.removals())
             final_sb = SpendBundle.aggregate([fee_tx.spend_bundle, sb])
             final_tx = dataclasses.replace(fee_tx, spend_bundle=final_sb)
-            resp = await self.node_client.push_tx(final_tx.spend_bundle)
+            try:
+                resp = await self.node_client.push_tx(final_sb)
+            except ValueError as err:
+                if "DOUBLE_SPEND" in err.args[0]["error"]:
+                    print("SpendBundle was already submitted, trying next one")
+                    continue
+                else:
+                    print(err)
+                    return
+
             assert resp["success"]
             print("SB successfully added to mempool: Cost: %s  Fee %s"  % (sb_cost, fee))
             while True:

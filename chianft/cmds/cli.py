@@ -136,7 +136,7 @@ async def submit_spend_bundles_cmd(
     
     minter = Minter()
     await minter.connect(fingerprint=fingerprint)
-    await minter.submit_spend_bundles(spends)
+    await minter.submit_spend_bundles(spends, int(fee_per_cost))
     await minter.close()
 
 
