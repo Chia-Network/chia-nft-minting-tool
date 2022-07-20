@@ -1,17 +1,22 @@
 # ChiaNFT - WIP
 
 ## Instructions
-- Install the branch `gw.mint_from_did` here: https://github.com/Chia-Network/chia-blockchain/tree/gw.mint_from_did
+- Stop any running wallet/node instances: `chia stop -d all`
+
+- Clone this repo, create/activate a new virtual environment
+
+- Install chianft and the necessary chia-blockchain branch with dev dependencies: `pip install --editable .[dev]`
 
 - Start testnet wallet and node using this branch
 
 - Generate some test data with: `python factory_metadata.py`
 
-- Generate spend bundles:
+- Generate spend bundles, for example:
 
 ```bash
 chianft create-mint-spend-bundles -w 2 -a txch1q02aryjymlslllpauhu7rhk3802lk3e5peuce8gy947dnggpegysqegkzk -r 300 metadata.csv output.pkl
 ```
+this will create a set of spend bundles from a DID wallet with ID 2, creating royalties of 3% to the given address. metadata.csv is the input file, and the created spend bundles will be created in output.pkl.
 
 - Submit spend bundles:
 
@@ -19,12 +24,13 @@ chianft create-mint-spend-bundles -w 2 -a txch1q02aryjymlslllpauhu7rhk3802lk3e5p
 chianft submit-spend-bundles -f 100 output.pkl
 ```
 
+
 ## TODO:
-- Add the fee transaction to the submit-spend-bundles function
-- Create the offer files for each spend bundle
-- Make setup.py
-- Write CLI tests
-- flake8 and mypy
+- ~~Add the fee transaction to the submit-spend-bundles function~~
+- ~~Create the offer files for each spend bundle~~
+- ~~Make setup.py~~
+- Test CLI against simulated wallets
+- ~~flake8 and mypy~~
 
 
 # Tool Specification
@@ -36,28 +42,27 @@ The program itself will be called: chianft
 The program will have a create-mint-spend-bundles command
 This option will accept the following parameters
 
-`(Required) –input <filename>`
-This option will provide the name of a CSV file containing the on-chain metadata for each NFT to be minted
 
-**Fields:**
-data_url, data_hash, metadata_url, metadata_hash, license_url, license_hash, edition_number, edition_count, owner_address
-The owner address is optional
-
-`(Optional) –minter-did`
-This option will specify a DID that should be used as the minter
-
-`(Optional) –enable-did`
-This option will indicate if a DID inner puzzle should be used. If not specified, then DID will not be supported for this NFT (i.e. NFT0)
-
-`(Optional) –royalty-amount <amount>`
+`(Optional) –-royalty-amount <amount>`
 This option specifies the percentage amount of a royalty that should be paid on transfer.
 Requires –enable-did
 
-`(Optional) –royalty-address <address>`
+`(Optional) –-royalty-address <address>`
 This option specifies the address that royalty payments should be paid to on transfer.
 Requires –enable-did
 
-`(Required) –output <filename>`
+`(Optional) --has-targets <True/False>`
+This option determines whether the spend bundles will include an extra spend to sent the created NFTs to a target address specified in the targets field of the input csv.
+
+`(Required) –-input <filename>`
+This option will provide the name of a CSV file containing the on-chain metadata for each NFT to be minted
+
+**Fields:**
+data_url, dapfta_hash, metadata_url, metadata_hash, license_url, license_hash, edition_number, edition_count, target_address
+The target address is optional
+
+
+`(Required) –-output <filename>`
 This option specifies the file that should be used to store the generated spend bundles.
 
 ## Phase 2: Spend Bundle Submission
