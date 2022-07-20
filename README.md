@@ -21,7 +21,7 @@ this will create a set of spend bundles from a DID wallet with ID 2, creating ro
 - Submit spend bundles:
 
 ```bash
-chianft submit-spend-bundles -f 100 output.pkl
+chianft submit-spend-bundles -f 1 output.pkl
 ```
 
 

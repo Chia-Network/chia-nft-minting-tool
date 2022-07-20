@@ -21,6 +21,7 @@ dev_dependencies = [
     "pytest-xdist",
     "twine",
     "isort",
+    "faker",
     "flake8",
     "mypy",
     "black==21.12b0",

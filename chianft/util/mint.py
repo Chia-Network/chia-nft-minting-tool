@@ -19,6 +19,8 @@ from chia.wallet.trading.offer import Offer
 from chia.wallet.transaction_record import TransactionRecord
 from chia.wallet.util.wallet_types import WalletType
 
+chunk = 25
+
 
 class Minter:
     def __init__(
@@ -118,12 +120,11 @@ class Minter:
         bundle_output: Path,
         wallet_id: int,
         royalty_address: Optional[str] = None,
-        royalty_percentage: Optional[int] = None,
+        royalty_percentage: Optional[int] = 0,
         has_targets: Optional[bool] = True,
     ) -> List[bytes]:
         metadata_list, target_list = read_metadata_csv(metadata_input, has_header=True, has_targets=has_targets)
         n = len(metadata_list)
-        chunk = 25
         funding_coin: Coin = await self.get_funding_coin(n)
         did_coin: Coin = await self.get_did_coin()
         did_lineage_parent = None
@@ -170,6 +171,7 @@ class Minter:
             for spend in sb.coin_spends:
                 cost, _ = spend.puzzle_reveal.to_program().run_with_cost(MAX_COST, spend.solution.to_program())
                 sb_cost += cost
+            fee_per_cost = int(fee_per_cost)  # type: ignore
             assert isinstance(fee_per_cost, int)
             fee = sb_cost * fee_per_cost
             fee_tx = await self.create_fee_tx(fee, sb.removals())
@@ -191,7 +193,7 @@ class Minter:
             while True:
                 in_mempool, tx_id = await self.get_tx_from_mempool(final_sb.name())
                 if in_mempool:
-                    print("Queued: %s Mempool: 1 Complete: %s" % (queued - 1, complete))
+                    print("Queued: %s Mempool: %s Complete: %s" % (chunk * (queued - 1), chunk, chunk * complete))
                     break
             assert isinstance(tx_id, bytes32)
             await self.wait_tx_confirmed(tx_id)
@@ -203,7 +205,7 @@ class Minter:
                     info = NFTInfo.from_json_dict(
                         (await self.wallet_client.get_nft_info(launcher.name().hex()))["nft_info"]
                     )
-                    offer_dict = {info.launcher_id.hex(): -1, self.xch_wallet_id: create_sell_offer}
+                    offer_dict = {info.launcher_id.hex(): -1, self.xch_wallet_id: int(create_sell_offer)}
                     offer, tr = await self.wallet_client.create_offer_for_ids(offer_dict, fee=0)
                     filepath = "offers/{}.offer".format(launcher.name().hex())
                     assert isinstance(offer, Offer)
