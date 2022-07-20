@@ -1,33 +1,32 @@
 # flake8: noqa E402 # See imports after multiprocessing.set_start_method
 import multiprocessing
 import os
+import tempfile
+from pathlib import Path
 from secrets import token_bytes
+from typing import AsyncIterator, List, Tuple
 
 import pytest
 import pytest_asyncio
-import tempfile
-
-from tests.setup_nodes import setup_node_and_wallet, setup_n_nodes, setup_two_nodes
-from pathlib import Path
-from typing import AsyncIterator, List, Tuple
-from chia.server.start_service import Service
 
 # Set spawn after stdlib imports, but before other imports
 from chia.clvm.spend_sim import SimClient, SpendSim
 from chia.protocols import full_node_protocol
+from chia.server.start_service import Service
 from chia.simulator.simulator_protocol import FarmNewBlockProtocol
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.peer_info import PeerInfo
 from chia.util.ints import uint16
+
 from tests.core.node_height import node_height_at_least
 from tests.pools.test_pool_rpc import wallet_is_synced
 from tests.setup_nodes import (
-    setup_simulators_and_wallets,
-    setup_node_and_wallet,
-    setup_full_system,
     setup_daemon,
-    setup_n_nodes,
+    setup_full_system,
     setup_introducer,
+    setup_n_nodes,
+    setup_node_and_wallet,
+    setup_simulators_and_wallets,
     setup_timelord,
     setup_two_nodes,
 )
@@ -38,10 +37,12 @@ from tests.wallet_tools import WalletTool
 multiprocessing.set_start_method("spawn")
 
 from pathlib import Path
+
 from chia.util.keyring_wrapper import KeyringWrapper
-from tests.block_tools import BlockTools, test_constants, create_block_tools, create_block_tools_async
-from tests.util.keyring import TempKeyring
+
+from tests.block_tools import BlockTools, create_block_tools, create_block_tools_async, test_constants
 from tests.setup_nodes import setup_farmer_multi_harvester
+from tests.util.keyring import TempKeyring
 
 
 @pytest.fixture(scope="session")
@@ -79,8 +80,8 @@ async def empty_blockchain(request):
     """
     Provides a list of 10 valid blocks, as well as a blockchain with 9 blocks added to it.
     """
-    from tests.util.blockchain import create_blockchain
     from tests.setup_nodes import test_constants
+    from tests.util.blockchain import create_blockchain
 
     bc1, db_wrapper, db_path = await create_blockchain(test_constants, request.param)
     yield bc1

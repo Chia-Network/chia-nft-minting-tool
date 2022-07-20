@@ -2,8 +2,7 @@ import asyncio
 
 import aiohttp
 import pytest
-
-from chia.protocols.shared_protocol import protocol_version, capabilities
+from chia.protocols.shared_protocol import capabilities, protocol_version
 from chia.server.outbound_message import NodeType
 from chia.server.server import ChiaServer, ssl_context_for_client
 from chia.server.ws_connection import WSChiaConnection

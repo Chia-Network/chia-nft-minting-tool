@@ -4,16 +4,14 @@ from typing import Optional
 
 import aiosqlite
 import pytest
-from clvm_tools import binutils
-
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program, SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.util.db_wrapper import DBWrapper
 from chia.util.ints import uint64
-
 from chia.wallet.wallet_pool_store import WalletPoolStore
+from clvm_tools import binutils
 
 
 def make_child_solution(coin_spend: CoinSpend, new_coin: Optional[Coin] = None) -> CoinSpend:

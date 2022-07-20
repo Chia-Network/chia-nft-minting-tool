@@ -6,7 +6,6 @@ from typing import List
 
 import aiosqlite
 import pytest
-
 from chia.cmds.db_validate_func import validate_v2
 from chia.consensus.blockchain import Blockchain
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
@@ -18,6 +17,7 @@ from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.full_block import FullBlock
 from chia.util.db_wrapper import DBWrapper2
 from chia.util.ints import uint64
+
 from tests.setup_nodes import test_constants
 from tests.util.temp_file import TempFile
 

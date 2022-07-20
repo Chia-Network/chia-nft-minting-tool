@@ -3,7 +3,6 @@ import time
 from pathlib import Path
 
 import pytest
-
 from chia.server.address_manager import AddressManager, ExtendedPeerInfo
 from chia.server.address_manager_store import AddressManagerStore
 from chia.types.peer_info import PeerInfo, TimestampedPeerInfo

@@ -1,11 +1,10 @@
 import os
 import pickle
+import tempfile
 from pathlib import Path
 from typing import List, Optional
 
 import aiosqlite
-import tempfile
-
 from chia.consensus.blockchain import Blockchain
 from chia.consensus.constants import ConsensusConstants
 from chia.full_node.block_store import BlockStore
@@ -14,6 +13,7 @@ from chia.full_node.hint_store import HintStore
 from chia.types.full_block import FullBlock
 from chia.util.db_wrapper import DBWrapper2
 from chia.util.default_root import DEFAULT_ROOT_PATH
+
 from tests.block_tools import BlockTools
 
 

@@ -3,11 +3,9 @@ import csv
 from secrets import token_bytes
 from typing import Any, List
 
-from faker import Faker
-
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.util.bech32m import encode_puzzle_hash
-from chia.wallet.did_wallet.did_info import DID_HRP
+from faker import Faker
 
 fake = Faker()
 
@@ -30,18 +28,33 @@ async def create_nft_sample() -> List[Any]:
     ]
     return sample
 
+
 async def create_target_sample() -> List[Any]:
     return [encode_puzzle_hash(bytes32(token_bytes(32)), "txch")]
 
+
 async def main() -> None:
     count = 100
-    header = ["hash", "uris", "uris", "meta_hash", "meta_uris", "meta_uris", "license_hash", "license_uris", "license_uris", "license_uris", "series_number", "series_total"]
+    header = [
+        "hash",
+        "uris",
+        "uris",
+        "meta_hash",
+        "meta_uris",
+        "meta_uris",
+        "license_hash",
+        "license_uris",
+        "license_uris",
+        "license_uris",
+        "series_number",
+        "series_total",
+    ]
     coros = [create_nft_sample() for _ in range(count)]
     data = await asyncio.gather(*coros)
     with open("metadata.csv", "w") as f:
         writer = csv.writer(f)
         writer.writerows([header] + data)
-        
+
     royalty_address = encode_puzzle_hash(bytes32(token_bytes(32)), "txch")
     royalty_basis_pts = 300
     print("Royalty Address: %s" % royalty_address)

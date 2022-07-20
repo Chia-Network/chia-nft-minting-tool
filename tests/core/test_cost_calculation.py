@@ -2,8 +2,6 @@ import logging
 import pathlib
 
 import pytest
-from clvm_tools import binutils
-
 from chia.consensus.condition_costs import ConditionCost
 from chia.consensus.cost_calculator import NPCResult
 from chia.full_node.bundle_tools import simple_solution_generator
@@ -11,6 +9,8 @@ from chia.full_node.mempool_check_conditions import get_name_puzzle_conditions, 
 from chia.types.blockchain_format.program import Program, SerializedProgram
 from chia.types.generator_types import BlockGenerator
 from chia.wallet.puzzles import p2_delegated_puzzle_or_hidden_puzzle
+from clvm_tools import binutils
+
 from tests.setup_nodes import test_constants
 from tests.util.misc import assert_runtime
 

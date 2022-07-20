@@ -4,7 +4,6 @@ from typing import List, Optional
 
 import pytest
 import pytest_asyncio
-
 from chia.consensus.blockchain import ReceiveBlockResult
 from chia.consensus.find_fork_point import find_fork_point_in_chain
 from chia.consensus.multiprocess_validation import PreValidationResult
@@ -18,15 +17,12 @@ from chia.types.unfinished_block import UnfinishedBlock
 from chia.util.block_cache import BlockCache
 from chia.util.hash import std_hash
 from chia.util.ints import uint8, uint32, uint64, uint128
-from tests.block_tools import get_signage_point, create_block_tools_async
-from tests.blockchain.blockchain_test_utils import (
-    _validate_and_add_block,
-    _validate_and_add_block_no_error,
-)
+
+from tests.block_tools import create_block_tools_async, get_signage_point
+from tests.blockchain.blockchain_test_utils import _validate_and_add_block, _validate_and_add_block_no_error
 from tests.setup_nodes import test_constants as test_constants_original
 from tests.util.blockchain import create_blockchain
 from tests.util.keyring import TempKeyring
-
 
 test_constants = test_constants_original.replace(**{"DISCRIMINANT_SIZE_BITS": 32, "SUB_SLOT_ITERS_STARTING": 2 ** 12})
 log = logging.getLogger(__name__)

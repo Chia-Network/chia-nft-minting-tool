@@ -4,9 +4,8 @@ from typing import Any, List, Optional, cast
 from unittest.mock import MagicMock
 
 import pytest
-from blspy import G1Element
-
 from benchmarks.utils import rand_g1, rand_hash
+from blspy import G1Element
 from chia.pools.pool_wallet import PoolWallet
 from chia.types.blockchain_format.sized_bytes import bytes32
 

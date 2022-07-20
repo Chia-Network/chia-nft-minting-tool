@@ -6,9 +6,6 @@ from typing import Any, Dict, List, Optional, Tuple, Type, get_type_hints
 
 import pytest
 from blspy import G1Element
-from clvm_tools import binutils
-from typing_extensions import Literal, get_args
-
 from chia.protocols.wallet_protocol import RespondRemovals
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program
@@ -34,6 +31,9 @@ from chia.util.streamable import (
     streamable_from_dict,
     write_uint32,
 )
+from clvm_tools import binutils
+from typing_extensions import Literal, get_args
+
 from tests.block_tools import BlockTools
 from tests.setup_nodes import test_constants
 

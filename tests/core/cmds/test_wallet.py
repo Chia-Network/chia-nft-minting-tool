@@ -1,7 +1,6 @@
 from typing import Any, Dict, Optional, Tuple
 
 import pytest
-
 from chia.cmds.wallet_funcs import print_offer_summary
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.util.ints import uint32

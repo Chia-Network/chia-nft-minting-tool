@@ -1,17 +1,17 @@
-import fasteners
 import logging
 import os
-import pytest
-
-from chia.util.file_keyring import acquire_writer_lock, FileKeyring, FileKeyringLockTimeout
-from chia.util.keyring_wrapper import KeyringWrapper
 from multiprocessing import Pool, TimeoutError
 from pathlib import Path
 from sys import platform
-from tests.util.keyring import TempKeyring, using_temp_file_keyring
 from time import sleep
 from typing import List
 
+import fasteners
+import pytest
+from chia.util.file_keyring import FileKeyring, FileKeyringLockTimeout, acquire_writer_lock
+from chia.util.keyring_wrapper import KeyringWrapper
+
+from tests.util.keyring import TempKeyring, using_temp_file_keyring
 
 log = logging.getLogger(__name__)
 

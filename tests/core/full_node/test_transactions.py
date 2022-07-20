@@ -3,7 +3,6 @@ from secrets import token_bytes
 from typing import Optional
 
 import pytest
-
 from chia.consensus.block_record import BlockRecord
 from chia.consensus.block_rewards import calculate_base_farmer_reward, calculate_pool_reward
 from chia.full_node.full_node_api import FullNodeAPI
@@ -11,6 +10,7 @@ from chia.protocols import full_node_protocol
 from chia.simulator.simulator_protocol import FarmNewBlockProtocol
 from chia.types.peer_info import PeerInfo
 from chia.util.ints import uint16, uint32
+
 from tests.time_out_assert import time_out_assert
 
 

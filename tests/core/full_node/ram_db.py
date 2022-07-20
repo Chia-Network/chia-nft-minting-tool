@@ -1,9 +1,8 @@
-from typing import Tuple
-from pathlib import Path
-
 import random
-import aiosqlite
+from pathlib import Path
+from typing import Tuple
 
+import aiosqlite
 from chia.consensus.blockchain import Blockchain
 from chia.consensus.constants import ConsensusConstants
 from chia.full_node.block_store import BlockStore

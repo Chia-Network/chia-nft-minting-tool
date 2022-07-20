@@ -1,5 +1,4 @@
 import pytest
-
 from chia.full_node.sync_store import SyncStore
 from chia.util.hash import std_hash
 

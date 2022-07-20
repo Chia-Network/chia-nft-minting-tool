@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 with open("README.md", "rt") as fh:
     long_description = fh.read()
@@ -11,10 +11,28 @@ dependencies = [
 ]
 
 dev_dependencies = [
+    "build",
+    "coverage",
+    "pre-commit",
+    "pylint",
+    "pytest",
+    "pytest-asyncio>=0.18.1",  # require attribute 'fixture'
+    "pytest-monitor; sys_platform == 'linux'",
+    "pytest-xdist",
+    "twine",
+    "isort",
     "flake8",
     "mypy",
-    "black",
-    "faker",
+    "black==21.12b0",
+    "aiohttp_cors",  # For blackd
+    "ipython",  # For asyncio debugging
+    "pyinstaller==5.0",
+    "types-aiofiles",
+    "types-click",
+    "types-cryptography",
+    "types-pkg_resources",
+    "types-pyyaml",
+    "types-setuptools",
 ]
 
 setup(

@@ -58,7 +58,7 @@ This option specifies the address that royalty payments should be paid to on tra
 Requires –enable-did
 
 `(Required) –output <filename>`
-This option specifies the file that should be used to store the generated spend bundles. 
+This option specifies the file that should be used to store the generated spend bundles.
 
 ## Phase 2: Spend Bundle Submission
 The program will have a submit-spend-bundles command
@@ -79,4 +79,3 @@ If the command stops before submitting all the spend bundles, it should be able 
 
 Process should be displayed as spend bundles are submitted to the mempool:
 `Progress output: Queued: x Mempool: y Complete: z`
-

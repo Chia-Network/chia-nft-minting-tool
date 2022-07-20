@@ -1,7 +1,6 @@
 from typing import Dict
 
 import blspy
-
 from chia.full_node.bundle_tools import simple_solution_generator
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program

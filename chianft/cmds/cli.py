@@ -1,31 +1,29 @@
 import asyncio
 import pickle
-import csv
-import click
-import pytest
-import os
-import shutil
 from functools import wraps
-
-from typing import List, Optional, Any
 from pathlib import Path
+from typing import Optional
+
+import click
+from chia.types.spend_bundle import SpendBundle
 
 from chianft import __version__
 from chianft.util.mint import Minter
-from chia.util.hash import std_hash
-from chia.util.bech32m import encode_puzzle_hash, decode_puzzle_hash
-from chia.types.spend_bundle import SpendBundle
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
+
 
 def coro(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         return asyncio.run(f(*args, **kwargs))
+
     return wrapper
+
 
 def monkey_patch_click() -> None:
     import click.core
+
     click.core._verify_python3_env = lambda *args, **kwargs: 0  # type: ignore
 
 
@@ -37,35 +35,30 @@ def monkey_patch_click() -> None:
 @click.pass_context
 def cli(ctx: click.Context) -> None:
     ctx.ensure_object(dict)
-    
+
 
 @cli.command("create-mint-spend-bundles", short_help="Create a set of spend bundles for minting NFTs")
 @click.argument("metadata_input", nargs=1, required=True, type=click.Path(exists=True))
-@click.argument("bundle_output", nargs=1, required=True,  type=click.Path())
+@click.argument("bundle_output", nargs=1, required=True, type=click.Path())
 @click.option(
     "-w",
     "--wallet-id",
     required=True,
     help="The DID wallet ID for minting",
 )
-@click.option(
-    "-a",
-    "--royalty-address",
-    required=False,
-    help="A standard XCH address where royalties will be sent"
-)
+@click.option("-a", "--royalty-address", required=False, help="A standard XCH address where royalties will be sent")
 @click.option(
     "-r",
     "--royalty-percentage",
     required=False,
-    help="Percentage in basis points of offer price to be paid as royalty, up to 10000 (100%)"
+    help="Percentage in basis points of offer price to be paid as royalty, up to 10000 (100%)",
 )
 @click.option(
     "-t",
     "--has-targets",
     required=False,
     default=True,
-    help="Select whether the input csv includes a column of target addresses to send NFTs"
+    help="Select whether the input csv includes a column of target addresses to send NFTs",
 )
 @click.option(
     "-p",
@@ -96,7 +89,7 @@ async def create_spend_bundles_cmd(
         wallet_id,
         royalty_address=royalty_address,
         royalty_percentage=royalty_percentage,
-        has_targets=has_targets
+        has_targets=has_targets,
     )
     await minter.close()
 
@@ -105,7 +98,7 @@ async def create_spend_bundles_cmd(
 
 
 @cli.command("submit-spend-bundles", short_help="Submit spend bundles to mempool")
-@click.argument("bundle_input", nargs=1, required=True,  type=click.Path())
+@click.argument("bundle_input", nargs=1, required=True, type=click.Path())
 @click.option(
     "-f",
     "--fee-per-cost",
@@ -113,10 +106,7 @@ async def create_spend_bundles_cmd(
     help="The fee (in mojos) per cost for each spend bundle",
 )
 @click.option(
-    "-o",
-    "--create-sell-offer",
-    required=False,
-    help="Create an offer for each created NFT at the specified price."
+    "-o", "--create-sell-offer", required=False, help="Create an offer for each created NFT at the specified price."
 )
 @click.option(
     "-p",
@@ -140,14 +130,10 @@ async def submit_spend_bundles_cmd(
         spends_bytes = pickle.load(f)
     for spend_bytes in spends_bytes:
         spends.append(SpendBundle.from_bytes(spend_bytes))
-    
+
     minter = Minter()
     await minter.connect(fingerprint=fingerprint)
-    await minter.submit_spend_bundles(
-        spends,
-        int(fee_per_cost),
-        create_sell_offer=int(create_sell_offer)
-    )
+    await minter.submit_spend_bundles(spends, fee_per_cost, create_sell_offer=create_sell_offer)
     await minter.close()
 
 
