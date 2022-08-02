@@ -158,8 +158,8 @@ async def test_nft_mint_and_transfer(tmp_path, two_wallet_nodes: Any, trusted: A
         "meta_uris",
         "license_hash",
         "license_uris",
-        "series_number",
-        "series_total",
+        "edition_number",
+        "edition_count",
         "target",
     ]
     sample_metadata: List[List[Any]] = [
@@ -351,8 +351,8 @@ async def test_nft_mint_with_offers(tmp_path, two_wallet_nodes: Any, trusted: An
         "meta_uris",
         "license_hash",
         "license_uris",
-        "series_number",
-        "series_total",
+        "edition_number",
+        "edition_count",
     ]
     sample_metadata: List[List[Any]] = [
         [

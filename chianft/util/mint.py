@@ -233,8 +233,8 @@ def read_metadata_csv(
             "meta_uris",
             "license_hash",
             "license_uris",
-            "series_number",
-            "series_total",
+            "edition_number",
+            "edition_count",
         ]
         if has_targets:
             header_row.append("target")

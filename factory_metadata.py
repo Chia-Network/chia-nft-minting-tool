@@ -46,8 +46,8 @@ async def main() -> None:
         "license_uris",
         "license_uris",
         "license_uris",
-        "series_number",
-        "series_total",
+        "edition_number",
+        "edition_count",
         "targets",
     ]
     coros = [create_nft_sample() for _ in range(count)]
