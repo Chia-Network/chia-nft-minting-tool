@@ -81,8 +81,10 @@ async def create_spend_bundles_cmd(
     INPUT is the path of the csv file of NFT matadata to be created
     OUTPUT is the path of the pickle file where spendbundles will be written
     """
+    if fingerprint is not None:
+        fingerprint = int(fingerprint)  # type: ignore
     minter = Minter()
-    await minter.connect(fingerprint=int(fingerprint))  # type: ignore
+    await minter.connect(fingerprint=fingerprint)
     spend_bundles = await minter.create_spend_bundles(
         metadata_input,
         bundle_output,
@@ -125,6 +127,8 @@ async def submit_spend_bundles_cmd(
     \b
     BUNDLE_INPUT is the path of the saved spend bundles from create-mint-spend-bundles
     """
+    if fingerprint is not None:
+        fingerprint = int(fingerprint)  # type: ignore
     spends = []
     with open(bundle_input, "rb") as f:
         spends_bytes = pickle.load(f)
@@ -132,8 +136,7 @@ async def submit_spend_bundles_cmd(
         spends.append(SpendBundle.from_bytes(spend_bytes))
 
     minter = Minter()
-
-    await minter.connect(fingerprint=int(fingerprint))  # type: ignore
+    await minter.connect(fingerprint=fingerprint)
     await minter.submit_spend_bundles(spends, int(fee), create_sell_offer=create_sell_offer)  # type: ignore
     await minter.close()
 
