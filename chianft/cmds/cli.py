@@ -44,7 +44,7 @@ def cli(ctx: click.Context) -> None:
     "-w",
     "--wallet-id",
     required=True,
-    help="The DID wallet ID for minting",
+    help="The NFT wallet ID for minting",
 )
 @click.option("-a", "--royalty-address", required=False, help="A standard XCH address where royalties will be sent")
 @click.option(
@@ -61,7 +61,7 @@ def cli(ctx: click.Context) -> None:
     help="Select whether the input csv includes a column of target addresses to send NFTs",
 )
 @click.option(
-    "-p",
+    "-f",
     "--fingerprint",
     required=False,
     help="Fingerprint of wallet to use",
@@ -82,7 +82,7 @@ async def create_spend_bundles_cmd(
     OUTPUT is the path of the pickle file where spendbundles will be written
     """
     minter = Minter()
-    await minter.connect(fingerprint=fingerprint)
+    await minter.connect(fingerprint=int(fingerprint))
     spend_bundles = await minter.create_spend_bundles(
         metadata_input,
         bundle_output,
@@ -100,16 +100,16 @@ async def create_spend_bundles_cmd(
 @cli.command("submit-spend-bundles", short_help="Submit spend bundles to mempool")
 @click.argument("bundle_input", nargs=1, required=True, type=click.Path())
 @click.option(
-    "-f",
-    "--fee-per-cost",
+    "-m",
+    "--fee",
     required=False,
-    help="The fee (in mojos) per cost for each spend bundle",
+    help="The fee (in mojos) for each spend bundle (25 NFTs)",
 )
 @click.option(
     "-o", "--create-sell-offer", required=False, help="Create an offer for each created NFT at the specified price."
 )
 @click.option(
-    "-p",
+    "-f",
     "--fingerprint",
     required=False,
     help="Fingerprint of wallet to use",
@@ -117,7 +117,7 @@ async def create_spend_bundles_cmd(
 @coro
 async def submit_spend_bundles_cmd(
     bundle_input: Path,
-    fee_per_cost: Optional[int] = 0,
+    fee: Optional[int] = 0,
     create_sell_offer: Optional[int] = None,
     fingerprint: Optional[int] = None,
 ) -> None:
@@ -132,8 +132,8 @@ async def submit_spend_bundles_cmd(
         spends.append(SpendBundle.from_bytes(spend_bytes))
 
     minter = Minter()
-    await minter.connect(fingerprint=fingerprint)
-    await minter.submit_spend_bundles(spends, fee_per_cost, create_sell_offer=create_sell_offer)
+    await minter.connect(fingerprint=int(fingerprint))
+    await minter.submit_spend_bundles(spends, int(fee), create_sell_offer=create_sell_offer)
     await minter.close()
 
 

@@ -1,5 +1,6 @@
 import asyncio
 import csv
+import dataclasses
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -46,7 +47,7 @@ class Minter:
             )
         assert isinstance(self.wallet_client, WalletRpcClient)
         if fingerprint:
-            await self.wallet_client.log_in(fingerprint)
+            await self.wallet_client.log_in(int(fingerprint))
         xch_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.STANDARD_WALLET)
         did_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.DECENTRALIZED_ID)
         nft_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.NFT)
@@ -99,11 +100,11 @@ class Minter:
                 await asyncio.sleep(1)
 
     async def create_fee_tx(self, fee: int, spent_coins: List[Coin]) -> TransactionRecord:
-        xch_coins = [coin.to_json_dict() for coin in spent_coins if coin.amount > 1]
+        xch_coins = [coin for coin in spent_coins if coin.amount > 1]
         assert isinstance(self.wallet_client, WalletRpcClient)
         address = await self.wallet_client.get_next_address(self.xch_wallet_id, new_address=True)
         ph = decode_puzzle_hash(address)
-        fee_coins = await self.wallet_client.select_coins(amount=fee, wallet_id=self.xch_wallet_id, exclude=xch_coins)
+        fee_coins = await self.wallet_client.select_coins(amount=fee, wallet_id=self.xch_wallet_id, excluded_coins=xch_coins)
         assert fee_coins is not None
         if any(item in xch_coins for item in fee_coins):
             raise ValueError("Selected coin for fee conflicts with funding coin. Select a different coin")
@@ -132,8 +133,8 @@ class Minter:
         spend_bundles = []
         assert isinstance(self.wallet_client, WalletRpcClient)
         for i in range(0, n, chunk):
-            resp = await self.wallet_client.did_mint_nfts(
-                wallet_id=self.did_wallet_id,
+            resp = await self.wallet_client.nft_mint_from_did(
+                wallet_id=self.nft_wallet_id,
                 metadata_list=metadata_list[i : i + chunk],
                 target_list=target_list[i : i + chunk],
                 royalty_percentage=royalty_percentage,  # type: ignore
@@ -157,7 +158,7 @@ class Minter:
     async def submit_spend_bundles(
         self,
         spend_bundles: List[SpendBundle],
-        fee_per_cost: Optional[int] = 0,
+        fee: Optional[int] = 0,
         create_sell_offer: Optional[int] = None,
     ) -> None:
         MAX_COST = 11000000000
@@ -171,11 +172,12 @@ class Minter:
             for spend in sb.coin_spends:
                 cost, _ = spend.puzzle_reveal.to_program().run_with_cost(MAX_COST, spend.solution.to_program())
                 sb_cost += cost
-            fee_per_cost = int(fee_per_cost)  # type: ignore
-            assert isinstance(fee_per_cost, int)
-            fee = sb_cost * fee_per_cost
-            fee_tx = await self.create_fee_tx(fee, sb.removals())
+            # fee_per_cost = int(fee_per_cost)  # type: ignore
+            # assert isinstance(fee_per_cost, int)
+            # fee = sb_cost * fee_per_cost
+            fee_tx = await self.create_fee_tx(int(fee), sb.removals())
             final_sb = SpendBundle.aggregate([fee_tx.spend_bundle, sb])
+            final_tx = dataclasses.replace(fee_tx, spend_bundle=final_sb)
             launchers = [coin for coin in sb.removals() if coin.puzzle_hash == LAUNCHER_PUZZLE_HASH]
             assert isinstance(self.node_client, FullNodeRpcClient)
             try:
@@ -233,8 +235,8 @@ def read_metadata_csv(
             "meta_uris",
             "license_hash",
             "license_uris",
-            "series_number",
-            "series_total",
+            "edition_number",
+            "edition_total",
         ]
         if has_targets:
             header_row.append("target")
