@@ -9,6 +9,11 @@
 
 - Start testnet wallet and node: `chia start wallet`, and `chia start node`
 
+- Make sure the wallet and node are fully synced
+
+- Make sure you have a DID wallet with attached NFT wallet
+
+- Make sure you have at least 2 xch coins with large enough amounts(one for creating the spend bundles and one for paying fees)
 
 ## Usage Examples
 
