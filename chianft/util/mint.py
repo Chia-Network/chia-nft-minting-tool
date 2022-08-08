@@ -140,8 +140,8 @@ class Minter:
                 target_list=target_list[i : i + chunk],
                 royalty_percentage=royalty_percentage,  # type: ignore
                 royalty_address=royalty_address,  # type: ignore
-                starting_num=i + 1,
-                max_num=n,
+                mint_number_start=i + 1,
+                mint_total=n,
                 xch_coins=next_coin.to_json_dict(),
                 xch_change_ph=next_coin.to_json_dict()["puzzle_hash"],
                 did_coin=did_coin.to_json_dict(),
