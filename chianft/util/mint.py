@@ -44,12 +44,12 @@ class Minter:
             self.wallet_client = await WalletRpcClient.create(
                 rpc_host, uint16(wallet_rpc_port), Path(DEFAULT_ROOT_PATH), config
             )
-        assert isinstance(self.wallet_client, WalletRpcClient)
+        # assert isinstance(self.wallet_client, WalletRpcClient)
         if fingerprint:
-            await self.wallet_client.log_in(int(fingerprint))
-        xch_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.STANDARD_WALLET)
-        did_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.DECENTRALIZED_ID)
-        nft_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.NFT)
+            await self.wallet_client.log_in(int(fingerprint))  # type: ignore
+        xch_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.STANDARD_WALLET)  # type: ignore
+        did_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.DECENTRALIZED_ID)  # type: ignore
+        nft_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.NFT)  # type: ignore
         self.xch_wallet_id = xch_wallets[0]["id"]
         self.did_wallet_id = did_wallets[0]["id"]
         self.nft_wallet_id = nft_wallets[0]["id"]
@@ -62,37 +62,37 @@ class Minter:
             self.wallet_client.close()
 
     async def get_funding_coin(self, amount: int) -> Coin:
-        assert isinstance(self.wallet_client, WalletRpcClient)
-        coins = await self.wallet_client.select_coins(amount=amount, wallet_id=self.xch_wallet_id)
+        # assert isinstance(self.wallet_client, WalletRpcClient)
+        coins = await self.wallet_client.select_coins(amount=amount, wallet_id=self.xch_wallet_id)  # type: ignore
         if len(coins) > 1:
             raise ValueError("Bulk minting requires a single coin with value greater than %s" % amount)
         return coins[0]
 
     async def get_did_coin(self) -> Coin:
-        assert isinstance(self.wallet_client, WalletRpcClient)
-        coins = await self.wallet_client.select_coins(amount=1, wallet_id=self.did_wallet_id)
+        # assert isinstance(self.wallet_client, WalletRpcClient)
+        coins = await self.wallet_client.select_coins(amount=1, wallet_id=self.did_wallet_id)  # type: ignore
         return coins[0]
 
     async def get_mempool_cost(self) -> uint64:
-        assert isinstance(self.node_client, FullNodeRpcClient)
-        mempool_items = await self.node_client.get_all_mempool_items()
+        # assert isinstance(self.node_client, FullNodeRpcClient)
+        mempool_items = await self.node_client.get_all_mempool_items()  # type: ignore
         cost = 0
         for item in mempool_items.values():
             cost += item["cost"]
         return uint64(cost)
 
     async def get_tx_from_mempool(self, sb_name: bytes32) -> Tuple[bool, Optional[bytes32]]:
-        assert isinstance(self.node_client, FullNodeRpcClient)
-        mempool_items = await self.node_client.get_all_mempool_items()
+        # assert isinstance(self.node_client, FullNodeRpcClient)
+        mempool_items = await self.node_client.get_all_mempool_items()  # type: ignore
         for item in mempool_items.items():
             if bytes32(hexstr_to_bytes(item[1]["spend_bundle_name"])) == sb_name:
                 return True, item[0]
         return False, None
 
     async def wait_tx_confirmed(self, tx_id: bytes32) -> bool:
-        assert isinstance(self.node_client, FullNodeRpcClient)
+        # assert isinstance(self.node_client, FullNodeRpcClient)
         while True:
-            item = await self.node_client.get_mempool_item_by_tx_id(tx_id)
+            item = await self.node_client.get_mempool_item_by_tx_id(tx_id)  # type: ignore
             if item is None:
                 return True
             else:
@@ -100,16 +100,16 @@ class Minter:
 
     async def create_fee_tx(self, fee: int, spent_coins: List[Coin]) -> TransactionRecord:
         xch_coins = [coin for coin in spent_coins if coin.amount > 1]
-        assert isinstance(self.wallet_client, WalletRpcClient)
-        address = await self.wallet_client.get_next_address(self.xch_wallet_id, new_address=True)
+        # assert isinstance(self.wallet_client, WalletRpcClient)
+        address = await self.wallet_client.get_next_address(self.xch_wallet_id, new_address=True)  # type: ignore
         ph = decode_puzzle_hash(address)
-        fee_coins = await self.wallet_client.select_coins(
+        fee_coins = await self.wallet_client.select_coins(  # type: ignore
             amount=fee, wallet_id=self.xch_wallet_id, excluded_coins=xch_coins
         )
         assert fee_coins is not None
         if any(item in xch_coins for item in fee_coins):
             raise ValueError("Selected coin for fee conflicts with funding coin. Select a different coin")
-        fee_tx = await self.wallet_client.create_signed_transaction(
+        fee_tx = await self.wallet_client.create_signed_transaction(  # type: ignore
             additions=[{"amount": 0, "puzzle_hash": ph}],
             coins=fee_coins,
             fee=uint64(fee),
@@ -132,9 +132,9 @@ class Minter:
         did_lineage_parent = None
         next_coin = funding_coin
         spend_bundles = []
-        assert isinstance(self.wallet_client, WalletRpcClient)
+        # assert isinstance(self.wallet_client, WalletRpcClient)
         for i in range(0, n, chunk):
-            resp = await self.wallet_client.nft_mint_from_did(
+            resp = await self.wallet_client.nft_mint_from_did(  # type: ignore
                 wallet_id=self.nft_wallet_id,
                 metadata_list=metadata_list[i : i + chunk],
                 target_list=target_list[i : i + chunk],
@@ -146,7 +146,7 @@ class Minter:
                 xch_change_ph=next_coin.to_json_dict()["puzzle_hash"],
                 did_coin=did_coin.to_json_dict(),
                 did_lineage_parent=did_lineage_parent,
-            )
+            )  # type: ignore
             if not resp["success"]:
                 raise ValueError("SpendBundle was not able to be created for metadata rows: %s to %s" % (i, i + chunk))
             sb = SpendBundle.from_json_dict(resp["spend_bundle"])

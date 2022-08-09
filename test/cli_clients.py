@@ -55,15 +55,8 @@ class WalletClientMock:
             )[0].coin
         ]
 
-    async def get_wallets(self, wallet_type: WalletType) -> int:
-        if wallet_type == WalletType.STANDARD_WALLET:
-            return 1
-        elif wallet_type == WalletType.DECENTRALIZED_ID:
-            return 2
-        elif wallet_type == WalletType.NFT:
-            return 3
-        else:
-            return 0
+    async def get_wallets(self, wallet_type: WalletType) -> List[Dict[str, int]]:
+        return [{"id": wallet_type.value}]
 
     async def get_next_address(self, wallet_id: int, new_address: bool) -> str:
         return encode_puzzle_hash(bytes32(token_bytes(32)), "xch")
@@ -119,7 +112,7 @@ class WalletClientMock:
                     coin_spends.append(CoinSpend(coin, ACS, Program.to([])))
             spend_bundles.append(SpendBundle(coin_spends, G2Element()))
 
-        return {"success": True, "spend_bundle": SpendBundle.aggregate(spend_bundles)}
+        return {"success": True, "spend_bundle": SpendBundle.aggregate(spend_bundles).to_json_dict()}
 
     def close(self):
         return
@@ -131,15 +124,15 @@ class WalletClientMock:
             return
 
 
-async def get_node_and_wallet_clients(full_node_rpc_port: int, wallet_rpc_port: int, fingerprint: int):
-    sim = await SpendSim.create(db_path=Path("./sim.db"))
+async def get_node_and_wallet_clients(tmp_path):
+    sim = await SpendSim.create(db_path=Path(tmp_path / "sim.db"))
     await sim.farm_block(ACS_PH)
     client = FullNodeClientMock(sim)
     return client, WalletClientMock(client)
 
 
-async def get_node_client(full_node_rpc_port: int):
-    sim = await SpendSim.create(db_path=Path("./sim.db"))
+async def get_node_client(tmp_path):
+    sim = await SpendSim.create(db_path=Path(tmp_path / "sim.db"))
     await sim.farm_block(ACS_PH)
     return FullNodeClientMock(sim)
 
