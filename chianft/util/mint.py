@@ -3,13 +3,11 @@ import csv
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from chia.rpc.full_node_rpc_client import FullNodeRpcClient
 from chia.rpc.wallet_rpc_client import WalletRpcClient
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.spend_bundle import SpendBundle
 from chia.util.bech32m import decode_puzzle_hash
-from chia.util.byte_types import hexstr_to_bytes
 from chia.util.ints import uint64
 from chia.wallet.did_wallet.did_wallet_puzzles import LAUNCHER_PUZZLE_HASH
 from chia.wallet.nft_wallet.nft_info import NFTInfo
@@ -29,7 +27,7 @@ class Minter:
         self.wallet_client = wallet_client
         self.node_client = node_client
 
-    async def get_wallets(
+    async def get_wallet_ids(
         self,
         nft_wallet_id: Optional[int] = None,
         did_wallet_id: Optional[int] = None,
@@ -65,7 +63,7 @@ class Minter:
         # assert isinstance(self.node_client, FullNodeRpcClient)
         mempool_items = await self.node_client.get_all_mempool_items()  # type: ignore
         for item in mempool_items.items():
-            if bytes32(hexstr_to_bytes(item[1]["spend_bundle_name"])) == sb_name:
+            if item[1].spend_bundle_name == sb_name:
                 return True, item[0]
         return False, None
 
@@ -160,12 +158,15 @@ class Minter:
             for spend in sb.coin_spends:
                 cost, _ = spend.puzzle_reveal.to_program().run_with_cost(MAX_COST, spend.solution.to_program())
                 sb_cost += cost
-
-            fee_tx = await self.create_fee_tx(fee, sb.removals())  # type: ignore
-            final_sb = SpendBundle.aggregate([fee_tx.spend_bundle, sb])
+            assert isinstance(fee, int)
+            if fee > 0:
+                fee_tx = await self.create_fee_tx(fee, sb.removals())  # type: ignore
+                final_sb = SpendBundle.aggregate([fee_tx.spend_bundle, sb])
+            else:
+                final_sb = sb
             # final_tx = dataclasses.replace(fee_tx, spend_bundle=final_sb)
             launchers = [coin for coin in sb.removals() if coin.puzzle_hash == LAUNCHER_PUZZLE_HASH]
-            assert isinstance(self.node_client, FullNodeRpcClient)
+            # assert isinstance(self.node_client, FullNodeRpcClient)
             try:
                 resp = await self.node_client.push_tx(final_sb)
             except ValueError as err:
@@ -183,7 +184,9 @@ class Minter:
                 if in_mempool:
                     print("Queued: %s Mempool: %s Complete: %s" % (chunk * (queued - 1), chunk, chunk * complete))
                     break
+
             assert isinstance(tx_id, bytes32)
+
             await self.wait_tx_confirmed(tx_id)
             await asyncio.sleep(2)
 

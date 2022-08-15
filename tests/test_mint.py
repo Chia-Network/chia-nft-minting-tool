@@ -1,9 +1,8 @@
 import csv
-import pickle
+# import traceback
 from secrets import token_bytes
 
 from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.types.spend_bundle import SpendBundle
 from chia.util.bech32m import encode_puzzle_hash
 from click.testing import CliRunner, Result
 from faker import Faker
@@ -52,8 +51,9 @@ def test_mint():
 
     runner = CliRunner()
     with runner.isolated_filesystem():
-        filename = create_metadata("metadata.csv", mint_total, has_targets)
-        result: Result = runner.invoke(
+        input_file = create_metadata("metadata.csv", mint_total, has_targets)
+        output_file = "output.pkl"
+        sb_result: Result = runner.invoke(
             cli,
             [
                 "create-mint-spend-bundles",
@@ -67,14 +67,14 @@ def test_mint():
                 has_targets,
                 "--chunk",
                 5,
-                filename,
-                "output.pkl",
+                input_file,
+                output_file,
             ],
         )
         # breakpoint()
-        spends = []
-        with open("output.pkl", "rb") as f:
-            spends_bytes = pickle.load(f)
-        for spend_bytes in spends_bytes:
-            spends.append(SpendBundle.from_bytes(spend_bytes))
+
+        result = runner.invoke(cli, ["submit-spend-bundles", "--fee", 0, output_file])
+
+    # traceback.print_exception(*result.exc_info)
+    assert sb_result
     assert result

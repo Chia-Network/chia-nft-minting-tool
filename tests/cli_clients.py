@@ -25,10 +25,17 @@ class FullNodeClientMock(SimClient):
     async def push_tx(self, spend_bundle: SpendBundle) -> Dict[str, Any]:  # type: ignore
         result = await super().push_tx(spend_bundle)
         if result[0] == MempoolInclusionStatus.SUCCESS:
-            await self.service.farm_block()
+            # await self.service.farm_block()
             return {"success": True, "status": MempoolInclusionStatus.SUCCESS.name}
         else:
             return {"success": False, "error": result[1]}
+
+    async def get_mempool_item_by_tx_id(self, tx_id):
+        result = await super().get_mempool_item_by_tx_id(tx_id)
+        if result:
+            await self.service.farm_block()
+
+        return result
 
     def close(self):
         return
@@ -45,12 +52,16 @@ class TXMock:
 class WalletClientMock:
     def __init__(self, sim_client):
         self.sim_client = sim_client
+        self.used_coins = []
 
     # These are the only two methods we need
-    async def select_coins(self, amount, wallet_id) -> List[Coin]:
+    async def select_coins(self, amount, wallet_id, excluded_coins=[]) -> List[Coin]:
         coins = await self.sim_client.get_coin_records_by_puzzle_hashes([ACS_PH], include_spent_coins=False)
 
-        return [[coin.coin for coin in coins][0]]
+        coin = [coin for coin in coins if coin not in excluded_coins + self.used_coins][0]
+        self.used_coins.append(coin)
+        return [coin.coin]
+        # return [[coin.coin for coin in coins][0]]
 
     async def get_wallets(self, wallet_type: WalletType) -> List[Dict[str, int]]:
         return [{"id": wallet_type.value}]
@@ -99,14 +110,14 @@ class WalletClientMock:
         fee: Optional[int] = 0,
     ) -> Dict:
         spend_bundles = []
-        for i in range(len(metadata_list)):
-            #  connstruct a spendbundle using xch coin and did coin, spending both back to themselves
-            xch_coin = xch_coins
-            xch_conds = [[51, bytes32.from_hexstr(xch_coins["puzzle_hash"]), int(xch_coins["amount"])]]  # type: ignore
-            did_conds = [[51, bytes32.from_hexstr(did_coin["puzzle_hash"]), int(did_coin["amount"])]]  # type: ignore
-            xch_spend = CoinSpend(Coin.from_json_dict(xch_coin), ACS, Program.to(xch_conds))
-            did_spend = CoinSpend(Coin.from_json_dict(did_coin), ACS, Program.to(did_conds))
-            spend_bundles.append(SpendBundle([xch_spend, did_spend], G2Element()))
+        # for i in range(len(metadata_list)):
+        #  connstruct a spendbundle using xch coin and did coin, spending both back to themselves
+        xch_coin = xch_coins
+        xch_conds = [[51, bytes32.from_hexstr(xch_coins["puzzle_hash"]), int(xch_coins["amount"])]]  # type: ignore
+        did_conds = [[51, bytes32.from_hexstr(did_coin["puzzle_hash"]), int(did_coin["amount"])]]  # type: ignore
+        xch_spend = CoinSpend(Coin.from_json_dict(xch_coin), ACS, Program.to(xch_conds))
+        did_spend = CoinSpend(Coin.from_json_dict(did_coin), ACS, Program.to(did_conds))
+        spend_bundles.append(SpendBundle([xch_spend, did_spend], G2Element()))
         return {"success": True, "spend_bundle": SpendBundle.aggregate(spend_bundles).to_json_dict()}
 
     def close(self):

@@ -98,7 +98,7 @@ def create_spend_bundles_cmd(
 
         try:
             minter = Minter(wallet_client, node_client)
-            await minter.get_wallets()
+            await minter.get_wallet_ids()
             spend_bundles = await minter.create_spend_bundles(
                 metadata_input,
                 bundle_output,
@@ -160,7 +160,7 @@ def submit_spend_bundles_cmd(
     """
 
     async def do_command():
-        node_client, wallet_client = get_node_and_wallet_clients(node_rpc_port, wallet_rpc_port, fingerprint)
+        node_client, wallet_client = await get_node_and_wallet_clients(node_rpc_port, wallet_rpc_port, fingerprint)
 
         try:
             spends = []
@@ -170,6 +170,7 @@ def submit_spend_bundles_cmd(
                 spends.append(SpendBundle.from_bytes(spend_bytes))
 
             minter = Minter(wallet_client, node_client)
+            await minter.get_wallet_ids()
             await minter.submit_spend_bundles(spends, int(fee), create_sell_offer=create_sell_offer)
 
         finally:
