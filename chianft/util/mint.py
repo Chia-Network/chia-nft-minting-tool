@@ -10,56 +10,36 @@ from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.spend_bundle import SpendBundle
 from chia.util.bech32m import decode_puzzle_hash
 from chia.util.byte_types import hexstr_to_bytes
-from chia.util.config import load_config
-from chia.util.default_root import DEFAULT_ROOT_PATH
-from chia.util.ints import uint16, uint64
+from chia.util.ints import uint64
 from chia.wallet.did_wallet.did_wallet_puzzles import LAUNCHER_PUZZLE_HASH
 from chia.wallet.nft_wallet.nft_info import NFTInfo
 from chia.wallet.trading.offer import Offer
 from chia.wallet.transaction_record import TransactionRecord
 from chia.wallet.util.wallet_types import WalletType
 
-chunk = 25
+default_chunk = 25
 
 
 class Minter:
     def __init__(
         self,
-        wallet_client: Optional[WalletRpcClient] = None,
-        node_client: Optional[FullNodeRpcClient] = None,
+        wallet_client,
+        node_client,
     ) -> None:
         self.wallet_client = wallet_client
         self.node_client = node_client
 
-    async def connect(self, fingerprint: Optional[int] = None) -> None:
-        config = load_config(Path(DEFAULT_ROOT_PATH), "config.yaml")
-        rpc_host = config["self_hostname"]
-        full_node_rpc_port = config["full_node"]["rpc_port"]
-        wallet_rpc_port = config["wallet"]["rpc_port"]
-        if not self.node_client:
-            self.node_client = await FullNodeRpcClient.create(
-                rpc_host, uint16(full_node_rpc_port), Path(DEFAULT_ROOT_PATH), config
-            )
-        if not self.wallet_client:
-            self.wallet_client = await WalletRpcClient.create(
-                rpc_host, uint16(wallet_rpc_port), Path(DEFAULT_ROOT_PATH), config
-            )
-        # assert isinstance(self.wallet_client, WalletRpcClient)
-        if fingerprint:
-            await self.wallet_client.log_in(int(fingerprint))  # type: ignore
-        xch_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.STANDARD_WALLET)  # type: ignore
-        did_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.DECENTRALIZED_ID)  # type: ignore
-        nft_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.NFT)  # type: ignore
+    async def get_wallets(
+        self,
+        nft_wallet_id: Optional[int] = None,
+        did_wallet_id: Optional[int] = None,
+    ) -> None:
+        xch_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.STANDARD_WALLET)
+        did_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.DECENTRALIZED_ID)
+        nft_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.NFT)
         self.xch_wallet_id = xch_wallets[0]["id"]
-        self.did_wallet_id = did_wallets[0]["id"]
-        self.nft_wallet_id = nft_wallets[0]["id"]
-
-    async def close(self) -> None:
-        if self.node_client:
-            self.node_client.close()
-
-        if self.wallet_client:
-            self.wallet_client.close()
+        self.did_wallet_id = [wallet["id"] for wallet in did_wallets][0]
+        self.nft_wallet_id = [wallet["id"] for wallet in nft_wallets][0]
 
     async def get_funding_coin(self, amount: int) -> Coin:
         # assert isinstance(self.wallet_client, WalletRpcClient)
@@ -124,36 +104,42 @@ class Minter:
         royalty_address: Optional[str] = None,
         royalty_percentage: Optional[int] = 0,
         has_targets: Optional[bool] = True,
+        chunk: Optional[int] = default_chunk,
     ) -> List[bytes]:
         metadata_list, target_list = read_metadata_csv(metadata_input, has_header=True, has_targets=has_targets)
-        n = len(metadata_list)
-        funding_coin: Coin = await self.get_funding_coin(n)
+        mint_total = len(metadata_list)
+        funding_coin: Coin = await self.get_funding_coin(mint_total)
         did_coin: Coin = await self.get_did_coin()
         did_lineage_parent = None
         next_coin = funding_coin
         spend_bundles = []
         # assert isinstance(self.wallet_client, WalletRpcClient)
-        for i in range(0, n, chunk):
+        for i in range(0, mint_total, chunk):  # type: ignore
             resp = await self.wallet_client.nft_mint_from_did(  # type: ignore
                 wallet_id=self.nft_wallet_id,
-                metadata_list=metadata_list[i : i + chunk],
-                target_list=target_list[i : i + chunk],
+                metadata_list=metadata_list[i : i + chunk],  # type: ignore
+                target_list=target_list[i : i + chunk],  # type: ignore
                 royalty_percentage=royalty_percentage,  # type: ignore
                 royalty_address=royalty_address,  # type: ignore
                 mint_number_start=i + 1,
-                mint_total=n,
+                mint_total=mint_total,
                 xch_coins=next_coin.to_json_dict(),
                 xch_change_ph=next_coin.to_json_dict()["puzzle_hash"],
                 did_coin=did_coin.to_json_dict(),
                 did_lineage_parent=did_lineage_parent,
             )  # type: ignore
             if not resp["success"]:
-                raise ValueError("SpendBundle was not able to be created for metadata rows: %s to %s" % (i, i + chunk))
+                raise ValueError(
+                    "SpendBundle could not be created for metadata rows: %s to %s" % (i, i + chunk)  # type: ignore
+                )
             sb = SpendBundle.from_json_dict(resp["spend_bundle"])
             spend_bundles.append(bytes(sb))
             next_coin = [c for c in sb.additions() if c.puzzle_hash == funding_coin.puzzle_hash][0]
             did_lineage_parent = [c for c in sb.removals() if c.name() == did_coin.name()][0].parent_coin_info.hex()
-            did_coin = [c for c in sb.additions() if (c.parent_coin_info == did_coin.name()) and (c.amount == 1)][0]
+            did_coin = [
+                c for c in sb.additions() if (c.parent_coin_info == did_coin.name()) and (c.amount == did_coin.amount)
+            ][0]
+
         return spend_bundles
 
     async def submit_spend_bundles(
@@ -163,6 +149,7 @@ class Minter:
         create_sell_offer: Optional[int] = None,
     ) -> None:
         MAX_COST = 11000000000
+        chunk = default_chunk
         if create_sell_offer:
             Path("offers").mkdir(parents=True, exist_ok=True)
 

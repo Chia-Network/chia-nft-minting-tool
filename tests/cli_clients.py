@@ -48,12 +48,9 @@ class WalletClientMock:
 
     # These are the only two methods we need
     async def select_coins(self, amount, wallet_id) -> List[Coin]:
-        return [
-            sorted(
-                await self.sim_client.get_coin_records_by_puzzle_hashes([ACS_PH], include_spent_coins=False),
-                key=lambda cr: cr.coin.name(),
-            )[0].coin
-        ]
+        coins = await self.sim_client.get_coin_records_by_puzzle_hashes([ACS_PH], include_spent_coins=False)
+
+        return [[coin.coin for coin in coins][0]]
 
     async def get_wallets(self, wallet_type: WalletType) -> List[Dict[str, int]]:
         return [{"id": wallet_type.value}]
@@ -101,17 +98,15 @@ class WalletClientMock:
         did_lineage_parent: Optional[str] = None,
         fee: Optional[int] = 0,
     ) -> Dict:
-        amount = 1
         spend_bundles = []
         for i in range(len(metadata_list)):
-            coins = await self.select_coins(amount, wallet_id)
-            conditions = [[51, ACS_PH, coins[0].amount - 1], [51, ACS_PH, 1]]
-            coin_spends: List[CoinSpend] = [CoinSpend(coins[0], ACS, Program.to(conditions))]
-            if len(coins) > 1:
-                for coin in coins[1:]:
-                    coin_spends.append(CoinSpend(coin, ACS, Program.to([])))
-            spend_bundles.append(SpendBundle(coin_spends, G2Element()))
-
+            #  connstruct a spendbundle using xch coin and did coin, spending both back to themselves
+            xch_coin = xch_coins
+            xch_conds = [[51, bytes32.from_hexstr(xch_coins["puzzle_hash"]), int(xch_coins["amount"])]]  # type: ignore
+            did_conds = [[51, bytes32.from_hexstr(did_coin["puzzle_hash"]), int(did_coin["amount"])]]  # type: ignore
+            xch_spend = CoinSpend(Coin.from_json_dict(xch_coin), ACS, Program.to(xch_conds))
+            did_spend = CoinSpend(Coin.from_json_dict(did_coin), ACS, Program.to(did_conds))
+            spend_bundles.append(SpendBundle([xch_spend, did_spend], G2Element()))
         return {"success": True, "spend_bundle": SpendBundle.aggregate(spend_bundles).to_json_dict()}
 
     def close(self):
@@ -124,15 +119,16 @@ class WalletClientMock:
             return
 
 
-async def get_node_and_wallet_clients(tmp_path):
-    sim = await SpendSim.create(db_path=Path(tmp_path / "sim.db"))
-    await sim.farm_block(ACS_PH)
+async def get_node_and_wallet_clients(full_node_rpc_port: int, wallet_rpc_port: int, fingerprint: int):
+    sim = await SpendSim.create(db_path=Path("./sim.db"))
+    for i in range(2):
+        await sim.farm_block(ACS_PH)
     client = FullNodeClientMock(sim)
     return client, WalletClientMock(client)
 
 
-async def get_node_client(tmp_path):
-    sim = await SpendSim.create(db_path=Path(tmp_path / "sim.db"))
+async def get_node_client(full_node_rpc_port: int):
+    sim = await SpendSim.create(db_path=Path("./sim.db"))
     await sim.farm_block(ACS_PH)
     return FullNodeClientMock(sim)
 
