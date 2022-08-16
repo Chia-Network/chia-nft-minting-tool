@@ -116,9 +116,12 @@ class WalletClientMock:
         xch_coin = xch_coins
         xch_conds = [[51, bytes32.from_hexstr(xch_coins["puzzle_hash"]), int(xch_coins["amount"])]]  # type: ignore
         xch_spend = CoinSpend(Coin.from_json_dict(xch_coin), ACS, Program.to(xch_conds))
-        did_conds = [[51, bytes32.from_hexstr(did_coin["puzzle_hash"]), int(did_coin["amount"])]]  # type: ignore
-        did_spend = CoinSpend(Coin.from_json_dict(did_coin), ACS, Program.to(did_conds))
-        spend_bundles.append(SpendBundle([xch_spend, did_spend], G2Element()))
+        if mint_from_did:
+            did_conds = [[51, bytes32.from_hexstr(did_coin["puzzle_hash"]), int(did_coin["amount"])]]  # type: ignore
+            did_spend = CoinSpend(Coin.from_json_dict(did_coin), ACS, Program.to(did_conds))
+            spend_bundles.append(SpendBundle([xch_spend, did_spend], G2Element()))
+        else:
+            spend_bundles.append(SpendBundle([xch_spend], G2Element()))
         return {"success": True, "spend_bundle": SpendBundle.aggregate(spend_bundles).to_json_dict()}
 
     def close(self):

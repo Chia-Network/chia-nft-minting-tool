@@ -1,5 +1,4 @@
 import csv
-
 # import traceback
 from secrets import token_bytes
 
@@ -87,3 +86,45 @@ def test_mint_from_did(has_targets):
     assert result.exception is None
     assert "Queued: 0" in result.output
     # breakpoint()
+
+
+@pytest.mark.parametrize("has_targets", [True, False])
+def test_mint_from_xch(has_targets):
+    mint_total = 10
+    chunk_size = 5
+    # has_targets = True
+
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        input_file = create_metadata("metadata.csv", mint_total, has_targets)
+        output_file = "output.pkl"
+        sb_result: Result = runner.invoke(
+            cli,
+            [
+                "create-mint-spend-bundles",
+                "--wallet-id",
+                "3",
+                "--mint-from-did",
+                False,
+                "--royalty-address",
+                encode_puzzle_hash(bytes32(token_bytes(32)), "xch"),
+                "--royalty-percentage",
+                300,
+                "--has-targets",
+                has_targets,
+                "--chunk",
+                chunk_size,
+                input_file,
+                output_file,
+            ],
+        )
+        # breakpoint()
+
+        result = runner.invoke(cli, ["submit-spend-bundles", "--fee", 0, output_file])
+
+    # traceback.print_exception(*result.exc_info)
+    # breakpoint()
+    assert sb_result.exception is None
+    assert "created {} spend bundles".format(int(mint_total / chunk_size)) in sb_result.output
+    assert result.exception is None
+    assert "Queued: 0" in result.output
