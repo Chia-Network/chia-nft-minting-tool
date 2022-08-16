@@ -112,8 +112,11 @@ class Minter:
         spend_bundles = []
         if mint_from_did:
             did_coin: Optional[Coin] = await self.get_did_coin()
+            assert isinstance(did_coin, Coin)
+            did_coin_dict: Optional[Dict] = did_coin.to_json_dict()
         else:
             did_coin = None
+            did_coin_dict = None
         did_lineage_parent = None
         # assert isinstance(self.wallet_client, WalletRpcClient)
         for i in range(0, mint_total, chunk):  # type: ignore
@@ -125,9 +128,9 @@ class Minter:
                 royalty_address=royalty_address,  # type: ignore
                 mint_number_start=i + 1,
                 mint_total=mint_total,
-                xch_coins=next_coin.to_json_dict(),
-                xch_change_ph=next_coin.to_json_dict()["puzzle_hash"],
-                did_coin=did_coin.to_json_dict() if mint_from_did else None,  # type: ignore
+                xch_coins=[next_coin.to_json_dict()],
+                xch_change_target=next_coin.to_json_dict()["puzzle_hash"],
+                did_coin=did_coin_dict,  # type: ignore
                 did_lineage_parent=did_lineage_parent,
                 mint_from_did=mint_from_did,
             )  # type: ignore
@@ -146,6 +149,8 @@ class Minter:
                     for c in sb.additions()
                     if (c.parent_coin_info == did_coin.name()) and (c.amount == did_coin.amount)
                 ][0]
+                assert isinstance(did_coin, Coin)
+                did_coin_dict = did_coin.to_json_dict()
         return spend_bundles
 
     async def submit_spend_bundles(

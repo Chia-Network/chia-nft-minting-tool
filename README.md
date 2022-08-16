@@ -27,7 +27,7 @@ python factory_metadata.py t
 2. Create the spend bundles. Here the -w is the wallet ID for the NFT wallet, -t True indicates we have targets in the metadata csv,  -a and -r are the royalty address and percentage.
 
 ```bash
-chianft create-mint-spend-bundles -w 3 -a txch1q02aryjymlslllpauhu7rhk3802lk3e5peuce8gy947dnggpegysqegkzk -r 300 -t True metadata.csv output.pkl
+chianft create-mint-spend-bundles -w 3 -m True -a txch1q02aryjymlslllpauhu7rhk3802lk3e5peuce8gy947dnggpegysqegkzk -r 300 -t True metadata.csv output.pkl
 ```
 
 3. Submit the spend bundles created in output.pkl. The -m flag is for the flat fee used for each spend bundle of 25 NFTs

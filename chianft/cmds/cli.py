@@ -12,8 +12,8 @@ from chianft.util.mint import Minter
 
 if os.environ.get("TESTING_CIC_CLI", "FALSE") == "TRUE":
     from tests.cli_clients import get_node_and_wallet_clients
-# else:
-#     from chianft.util.clients import get_node_and_wallet_clients
+else:
+    from chianft.util.clients import get_node_and_wallet_clients
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 

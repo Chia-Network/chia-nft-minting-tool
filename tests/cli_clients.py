@@ -103,7 +103,7 @@ class WalletClientMock:
         mint_number_start: Optional[int] = 1,
         mint_total: Optional[int] = None,
         xch_coins: Optional[Set[Coin]] = None,
-        xch_change_ph: Optional[str] = None,
+        xch_change_target: Optional[str] = None,
         new_innerpuzhash: Optional[str] = None,
         did_coin: Optional[Dict] = None,
         did_lineage_parent: Optional[str] = None,
