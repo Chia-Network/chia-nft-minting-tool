@@ -8,6 +8,7 @@ from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.spend_bundle import SpendBundle
 from chia.util.bech32m import decode_puzzle_hash
+from chia.util.byte_types import hexstr_to_bytes
 from chia.util.ints import uint64
 from chia.wallet.did_wallet.did_wallet_puzzles import LAUNCHER_PUZZLE_HASH
 from chia.wallet.nft_wallet.nft_info import NFTInfo
@@ -63,7 +64,7 @@ class Minter:
         # assert isinstance(self.node_client, FullNodeRpcClient)
         mempool_items = await self.node_client.get_all_mempool_items()  # type: ignore
         for item in mempool_items.items():
-            if item[1].spend_bundle_name == sb_name:
+            if bytes32(hexstr_to_bytes(item[1]["spend_bundle_name"])) == sb_name:
                 return True, item[0]
         return False, None
 

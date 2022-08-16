@@ -1,6 +1,6 @@
 from pathlib import Path
 from secrets import token_bytes
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 from blspy import G2Element
 from chia.clvm.spend_sim import SimClient, SpendSim
@@ -29,6 +29,13 @@ class FullNodeClientMock(SimClient):
             return {"success": True, "status": MempoolInclusionStatus.SUCCESS.name}
         else:
             return {"success": False, "error": result[1]}
+
+    async def get_all_mempool_items(self):
+        result = await super().get_all_mempool_items()
+        mempool_dict = {}
+        for item in result.items():
+            mempool_dict[item[0]] = item[1].to_json_dict()
+        return mempool_dict
 
     async def get_mempool_item_by_tx_id(self, tx_id):
         result = await super().get_mempool_item_by_tx_id(tx_id)
@@ -102,7 +109,7 @@ class WalletClientMock:
         target_list: Optional[List[str]] = None,
         mint_number_start: Optional[int] = 1,
         mint_total: Optional[int] = None,
-        xch_coins: Optional[Set[Coin]] = None,
+        xch_coins: Optional[List[Coin]] = None,
         xch_change_target: Optional[str] = None,
         new_innerpuzhash: Optional[str] = None,
         did_coin: Optional[Dict] = None,
@@ -111,10 +118,10 @@ class WalletClientMock:
         fee: Optional[int] = 0,
     ) -> Dict:
         spend_bundles = []
-        # for i in range(len(metadata_list)):
-        #  connstruct a spendbundle using xch coin and did coin, spending both back to themselves
-        xch_coin = xch_coins
-        xch_conds = [[51, bytes32.from_hexstr(xch_coins["puzzle_hash"]), int(xch_coins["amount"])]]  # type: ignore
+        # construct a spendbundle using xch coin and did coin, spending both back to themselves
+        assert isinstance(xch_coins, List)
+        xch_coin = xch_coins[0]
+        xch_conds = [[51, bytes32.from_hexstr(xch_coin["puzzle_hash"]), int(xch_coin["amount"])]]  # type: ignore
         xch_spend = CoinSpend(Coin.from_json_dict(xch_coin), ACS, Program.to(xch_conds))
         if mint_from_did:
             did_conds = [[51, bytes32.from_hexstr(did_coin["puzzle_hash"]), int(did_coin["amount"])]]  # type: ignore

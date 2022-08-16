@@ -77,11 +77,8 @@ def test_mint_from_did(has_targets):
                 output_file,
             ],
         )
-        # breakpoint()
-
         result = runner.invoke(cli, ["submit-spend-bundles", "--fee", 0, output_file])
 
-    # traceback.print_exception(*result.exc_info)
     assert sb_result.exception is None
     assert "created {} spend bundles".format(int(mint_total / chunk_size)) in sb_result.output
     assert result.exception is None
