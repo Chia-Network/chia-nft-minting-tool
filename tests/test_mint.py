@@ -48,7 +48,7 @@ def create_metadata(filename: str, mint_total: int, has_targets: bool) -> str:
 
 
 @pytest.mark.parametrize("has_targets", [True, False])
-def test_mint(has_targets):
+def test_mint_from_did(has_targets):
     mint_total = 10
     chunk_size = 5
     # has_targets = True
@@ -63,6 +63,8 @@ def test_mint(has_targets):
                 "create-mint-spend-bundles",
                 "--wallet-id",
                 "3",
+                "--mint-from-did",
+                True,
                 "--royalty-address",
                 encode_puzzle_hash(bytes32(token_bytes(32)), "xch"),
                 "--royalty-percentage",

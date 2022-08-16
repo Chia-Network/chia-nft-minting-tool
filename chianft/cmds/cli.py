@@ -43,6 +43,13 @@ def cli(ctx: click.Context) -> None:
     required=True,
     help="The NFT wallet ID for minting",
 )
+@click.option(
+    "-m",
+    "--mint-from-did",
+    required=False,
+    default=False,
+    help="Set to True for minting NFTs from a DID. The DID must be attached to the NFT wallet you select",
+)
 @click.option("-a", "--royalty-address", required=False, help="A standard XCH address where royalties will be sent")
 @click.option(
     "-r",
@@ -79,6 +86,7 @@ def create_spend_bundles_cmd(
     metadata_input: Path,
     bundle_output: Path,
     wallet_id: int,
+    mint_from_did: Optional[bool] = False,
     royalty_address: Optional[str] = None,
     royalty_percentage: Optional[int] = None,
     has_targets: Optional[bool] = False,
@@ -103,6 +111,7 @@ def create_spend_bundles_cmd(
                 metadata_input,
                 bundle_output,
                 wallet_id,
+                mint_from_did,
                 royalty_address=royalty_address,
                 royalty_percentage=royalty_percentage,
                 has_targets=has_targets,

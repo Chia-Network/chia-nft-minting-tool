@@ -99,6 +99,7 @@ class Minter:
         metadata_input: Path,
         bundle_output: Path,
         wallet_id: int,
+        mint_from_did: Optional[bool] = False,
         royalty_address: Optional[str] = None,
         royalty_percentage: Optional[int] = 0,
         has_targets: Optional[bool] = True,
@@ -107,10 +108,13 @@ class Minter:
         metadata_list, target_list = read_metadata_csv(metadata_input, has_header=True, has_targets=has_targets)
         mint_total = len(metadata_list)
         funding_coin: Coin = await self.get_funding_coin(mint_total)
-        did_coin: Coin = await self.get_did_coin()
-        did_lineage_parent = None
         next_coin = funding_coin
         spend_bundles = []
+        if mint_from_did:
+            did_coin: Optional[Coin] = await self.get_did_coin()
+        else:
+            did_coin = None
+        did_lineage_parent = None
         # assert isinstance(self.wallet_client, WalletRpcClient)
         for i in range(0, mint_total, chunk):  # type: ignore
             resp = await self.wallet_client.nft_mint_from_did(  # type: ignore
@@ -123,8 +127,9 @@ class Minter:
                 mint_total=mint_total,
                 xch_coins=next_coin.to_json_dict(),
                 xch_change_ph=next_coin.to_json_dict()["puzzle_hash"],
-                did_coin=did_coin.to_json_dict(),
+                did_coin=did_coin.to_json_dict() if mint_from_did else None,  # type: ignore
                 did_lineage_parent=did_lineage_parent,
+                mint_from_did=mint_from_did,
             )  # type: ignore
             if not resp["success"]:
                 raise ValueError(
@@ -133,11 +138,14 @@ class Minter:
             sb = SpendBundle.from_json_dict(resp["spend_bundle"])
             spend_bundles.append(bytes(sb))
             next_coin = [c for c in sb.additions() if c.puzzle_hash == funding_coin.puzzle_hash][0]
-            did_lineage_parent = [c for c in sb.removals() if c.name() == did_coin.name()][0].parent_coin_info.hex()
-            did_coin = [
-                c for c in sb.additions() if (c.parent_coin_info == did_coin.name()) and (c.amount == did_coin.amount)
-            ][0]
-
+            if mint_from_did:
+                assert isinstance(did_coin, Coin)
+                did_lineage_parent = [c for c in sb.removals() if c.name() == did_coin.name()][0].parent_coin_info.hex()
+                did_coin = [
+                    c
+                    for c in sb.additions()
+                    if (c.parent_coin_info == did_coin.name()) and (c.amount == did_coin.amount)
+                ][0]
         return spend_bundles
 
     async def submit_spend_bundles(
