@@ -1,7 +1,9 @@
 import csv
+
 # import traceback
 from secrets import token_bytes
 
+import pytest
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.util.bech32m import encode_puzzle_hash
 from click.testing import CliRunner, Result
@@ -45,9 +47,11 @@ def create_metadata(filename: str, mint_total: int, has_targets: bool) -> str:
     return filename
 
 
-def test_mint():
+@pytest.mark.parametrize("has_targets", [True, False])
+def test_mint(has_targets):
     mint_total = 10
-    has_targets = True
+    chunk_size = 5
+    # has_targets = True
 
     runner = CliRunner()
     with runner.isolated_filesystem():
@@ -66,7 +70,7 @@ def test_mint():
                 "--has-targets",
                 has_targets,
                 "--chunk",
-                5,
+                chunk_size,
                 input_file,
                 output_file,
             ],
@@ -76,5 +80,8 @@ def test_mint():
         result = runner.invoke(cli, ["submit-spend-bundles", "--fee", 0, output_file])
 
     # traceback.print_exception(*result.exc_info)
-    assert sb_result
-    assert result
+    assert sb_result.exception is None
+    assert "created {} spend bundles".format(int(mint_total / chunk_size)) in sb_result.output
+    assert result.exception is None
+    assert "Queued: 0" in result.output
+    # breakpoint()
