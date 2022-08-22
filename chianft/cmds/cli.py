@@ -44,10 +44,11 @@ def cli(ctx: click.Context) -> None:
     help="The NFT wallet ID for minting",
 )
 @click.option(
-    "-m",
+    "-d",
     "--mint-from-did",
     required=False,
     default=False,
+    type=bool,
     help="Set to True for minting NFTs from a DID. The DID must be attached to the NFT wallet you select",
 )
 @click.option("-a", "--royalty-address", required=False, help="A standard XCH address where royalties will be sent")

@@ -92,15 +92,15 @@ class WalletClientMock:
             for ca in coin_announcements:
                 conditions.append(Program.to([61, ca.name()]))
         if coins is None:
-            coins = await self.select_coins(None, None)
-        conditions.append(Program.to([51, ACS_PH, sum(c.amount for c in coins) - (total_amount + fee)]))  # change
-        coin_spends: List[CoinSpend] = [CoinSpend(coins[0], ACS, Program.to(conditions))]
+            coins = await self.select_coins(None, None)  # type: ignore
+        conditions.append(Program.to([51, ACS_PH, sum(c.amount for c in list(coins)) - (total_amount + fee)]))
+        coin_spends: List[CoinSpend] = [CoinSpend(coins[0], ACS, Program.to(conditions))]  # type: ignore
         if len(coins) > 1:
             for coin in coins[1:]:
                 coin_spends.append(CoinSpend(coin, ACS, Program.to([])))
         return TXMock(SpendBundle(coin_spends, G2Element()))
 
-    async def nft_mint_from_did(
+    async def nft_mint_bulk(
         self,
         wallet_id: int,
         metadata_list: List[Any],

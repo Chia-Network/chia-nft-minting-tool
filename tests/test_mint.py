@@ -77,13 +77,10 @@ def test_mint_from_did(has_targets):
                 output_file,
             ],
         )
-        result = runner.invoke(cli, ["submit-spend-bundles", "--fee", 0, output_file])
+        result = runner.invoke(cli, ["submit-spend-bundles", "--fee", 10, output_file])
 
     assert sb_result.exception is None
-    assert "created {} spend bundles".format(int(mint_total / chunk_size)) in sb_result.output
     assert result.exception is None
-    assert "Queued: 0" in result.output
-    # breakpoint()
 
 
 @pytest.mark.parametrize("has_targets", [True, False])
@@ -123,6 +120,4 @@ def test_mint_from_xch(has_targets):
     # traceback.print_exception(*result.exc_info)
     # breakpoint()
     assert sb_result.exception is None
-    assert "created {} spend bundles".format(int(mint_total / chunk_size)) in sb_result.output
     assert result.exception is None
-    assert "Queued: 0" in result.output
