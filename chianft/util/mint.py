@@ -14,8 +14,6 @@ from chia.wallet.did_wallet.did_wallet_puzzles import LAUNCHER_PUZZLE_HASH
 from chia.wallet.trading.offer import Offer
 from chia.wallet.util.wallet_types import WalletType
 
-default_chunk = 25
-
 
 class Minter:
     def __init__(
@@ -43,10 +41,6 @@ class Minter:
         coins = await self.wallet_client.select_coins(amount=amount, wallet_id=self.xch_wallet_id)  # type: ignore
         if len(coins) > 1:
             raise ValueError("Bulk minting requires a single coin with value greater than %s" % amount)
-        return coins[0]
-
-    async def get_did_coin(self) -> Coin:
-        coins = await self.wallet_client.select_coins(amount=1, wallet_id=self.did_wallet_id)  # type: ignore
         return coins[0]
 
     async def get_mempool_cost(self) -> uint64:
@@ -80,7 +74,7 @@ class Minter:
         royalty_address: Optional[str] = None,
         royalty_percentage: Optional[int] = 0,
         has_targets: Optional[bool] = True,
-        chunk: Optional[int] = default_chunk,
+        chunk: Optional[int] = 25,
     ) -> List[bytes]:
         metadata_list, target_list = read_metadata_csv(metadata_input, has_header=True, has_targets=has_targets)
         mint_total = len(metadata_list)
@@ -88,7 +82,9 @@ class Minter:
         next_coin = funding_coin
         spend_bundles = []
         if mint_from_did:
-            did_coin: Optional[Coin] = await self.get_did_coin()
+            did = await self.wallet_client.get_did_id(wallet_id=self.did_wallet_id)
+            did_coin_record = await self.node_client.get_coin_record_by_name(hexstr_to_bytes(did["coin_id"]))
+            did_coin = did_coin_record.coin
             assert isinstance(did_coin, Coin)
             did_coin_dict: Optional[Dict] = did_coin.to_json_dict()
         else:
@@ -180,7 +176,7 @@ class Minter:
             # Setup the next fee coin for the next spend bundle
             fee_coin = [coin for coin in final_sb.additions() if coin.parent_coin_info == fee_coin.name()][0]
             # Keep the launcher coins for creating offers
-            launchers = [coin for coin in sb.removals() if coin.puzzle_hash == LAUNCHER_PUZZLE_HASH]
+            launcher_ids = [coin.name().hex() for coin in sb.removals() if coin.puzzle_hash == LAUNCHER_PUZZLE_HASH]
 
             # Submit the final spend bundle
             tx_time_start = time.monotonic()
@@ -212,15 +208,26 @@ class Minter:
             # Wait until the TX is confirmed
             assert isinstance(tx_id, bytes32)
             await self.wait_tx_confirmed(tx_id)
-            tx_time_end = time.monotonic()
 
+            # Need to wait for the NFT wallet to catch up
+            await asyncio.sleep(5)
+
+            tx_time_end = time.monotonic()
+            failed_offers = []
             if create_sell_offer:
                 offer_time_start = time.monotonic()
                 assert isinstance(self.wallet_client, WalletRpcClient)
-                for launcher in launchers:
-                    offer_dict = {launcher.name().hex(): -1, self.xch_wallet_id: int(create_sell_offer)}
-                    offer, tr = await self.wallet_client.create_offer_for_ids(offer_dict, fee=0)
-                    filepath = "offers/{}.offer".format(launcher.name().hex())
+                for launcher_id in launcher_ids:
+                    offer_dict = {launcher_id: -1, self.xch_wallet_id: int(create_sell_offer)}
+                    try:
+                        offer, tr = await self.wallet_client.create_offer_for_ids(offer_dict, fee=0)
+                    except ValueError as err:
+                        print("Failed to include offer for NFT: {}".format(launcher_id))
+                        print("Effor creating offer: {}".format(err))
+                        failed_offers.append(launcher_id)
+                        await asyncio.sleep(5)
+                        continue
+                    filepath = "offers/{}.offer".format(launcher_id)
                     assert isinstance(offer, Offer)
                     with open(Path(filepath), "w") as file:
                         file.write(offer.to_bech32())
@@ -234,10 +241,14 @@ class Minter:
             fee_time = fee_time_end - fee_time_start
             total_time = end - start
             print(
-                "SUBMITTED: {}/{}\tTX: {:.2f}\tFEE: {:.2f}\tOFFER: {:.2f}\tTOTAL: {:.2f}".format(
+                "SUBMITTED: {}/{}\tTX: {:.2f}s\tFEE: {:.2f}s\tOFFER: {:.2f}s\tTOTAL: {:.2f}s".format(
                     i + starting_spend_index, len(spend_bundles), tx_time, fee_time, offer_time, total_time
                 )
             )
+        if failed_offers:
+            print("Failed to create offers for the following NFT ids:")
+            for launcher_id in failed_offers:
+                print(launcher_id)
 
 
 def read_metadata_csv(
