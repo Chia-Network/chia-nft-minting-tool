@@ -27,15 +27,38 @@ class Minter:
     async def get_wallet_ids(
         self,
         nft_wallet_id: Optional[int] = None,
-        did_wallet_id: Optional[int] = None,
     ) -> None:
-        xch_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.STANDARD_WALLET)
-        did_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.DECENTRALIZED_ID)
         nft_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.NFT)
+        if nft_wallet_id is not None:
+            if len(nft_wallets) > 1:
+                self.non_did_nft_wallet_ids = [wallet["id"] for wallet in nft_wallets if wallet["id"] != nft_wallet_id]
+            self.nft_wallet_id = nft_wallet_id
+            self.did_coin_id = None
+            self.did_wallet_id = None
+
+            did_id_for_nft = (await self.wallet_client.get_nft_wallet_did(wallet_id=nft_wallet_id))["did_id"]
+            did_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.DECENTRALIZED_ID)
+            for wallet in did_wallets:
+                did_info = await self.wallet_client.get_did_id(wallet_id=wallet["id"])
+                if did_info["my_did"] == did_id_for_nft:
+                    self.did_coin_id = bytes32.from_hexstr(did_info["coin_id"])
+                    self.did_wallet_id = wallet["id"]
+                    break
+        else:
+            self.non_did_nft_wallet_ids = []
+            for wallet in nft_wallets:
+                did_id = (await self.wallet_client.get_nft_wallet_did(wallet_id=wallet["id"]))["did_id"]
+                if did_id is None:
+                    self.non_did_nft_wallet_ids.append(wallet["id"])
+                else:
+                    self.nft_wallet_id = wallet["id"]
+
+        xch_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.STANDARD_WALLET)
         self.xch_wallet_id = xch_wallets[0]["id"]
-        if did_wallets:
-            self.did_wallet_id = [wallet["id"] for wallet in did_wallets][0]
-        self.nft_wallet_id = [wallet["id"] for wallet in nft_wallets][0]
+
+    async def get_nft_count(self, wallet_id: int):
+        nft_list = await self.wallet_client.list_nfts(wallet_id=wallet_id)
+        return len(nft_list)
 
     async def get_funding_coin(self, amount: int) -> Coin:
         coins = await self.wallet_client.select_coins(amount=amount, wallet_id=self.xch_wallet_id)  # type: ignore
@@ -65,6 +88,13 @@ class Minter:
             else:
                 await asyncio.sleep(1)
 
+    async def count_nfts(self) -> int:
+        nft_count = 0
+        for i in self.non_did_nft_wallet_ids:
+            nft_len = len((await self.wallet_client.list_nfts(wallet_id=i))["nft_list"])
+            nft_count += nft_len
+        return nft_count
+
     async def create_spend_bundles(
         self,
         metadata_input: Path,
@@ -76,6 +106,7 @@ class Minter:
         has_targets: Optional[bool] = True,
         chunk: Optional[int] = 25,
     ) -> List[bytes]:
+        await self.get_wallet_ids(wallet_id)
         metadata_list, target_list = read_metadata_csv(metadata_input, has_header=True, has_targets=has_targets)
         mint_total = len(metadata_list)
         funding_coin: Coin = await self.get_funding_coin(mint_total)
@@ -132,6 +163,7 @@ class Minter:
         fee: Optional[int] = 0,
         create_sell_offer: Optional[int] = None,
     ) -> None:
+        await self.get_wallet_ids()
         # Get first unspent spendbundle so we can restart efficiently
         for i, sb in enumerate(spend_bundles):
             xch_coin_to_spend = [coin for coin in sb.removals() if coin.amount > 1][0]
@@ -151,13 +183,17 @@ class Minter:
         # select a coin to use for fees
         assert isinstance(fee, int)
         total_fee_to_pay = len(spend_bundles) * fee
+        print("Selecting Fee coin")
         fee_coins = await self.wallet_client.select_coins(  # type: ignore
             amount=total_fee_to_pay, wallet_id=self.xch_wallet_id, excluded_coins=[xch_coin_to_spend]
         )
         fee_coin = fee_coins[0]
+        print("Fee coin selected")
 
+        offer_time: float = 0.0
         # start submit loop
         for i, sb in enumerate(spend_bundles[starting_spend_index:]):
+            # nfts_in_sb_count = len(sb.additions()) - len(sb.removals())
             start = time.monotonic()
             # TODO: Add dynamic fee estimation
             assert isinstance(fee, int)
@@ -208,11 +244,14 @@ class Minter:
             # Wait until the TX is confirmed
             assert isinstance(tx_id, bytes32)
             await self.wait_tx_confirmed(tx_id)
+            tx_time_end = time.monotonic()
 
             # Need to wait for the NFT wallet to catch up
-            await asyncio.sleep(5)
+            if i > 0 and offer_time > 30:
+                await asyncio.sleep(30)
+            else:
+                await asyncio.sleep(10)
 
-            tx_time_end = time.monotonic()
             failed_offers = []
             if create_sell_offer:
                 offer_time_start = time.monotonic()
@@ -233,8 +272,9 @@ class Minter:
                         file.write(offer.to_bech32())
                 offer_time_end = time.monotonic()
                 offer_time = offer_time_end - offer_time_start
-            else:
-                offer_time = 0
+
+            if offer_time > 30:
+                await asyncio.sleep(30)
 
             end = time.monotonic()
             tx_time = tx_time_end - tx_time_start
@@ -242,7 +282,7 @@ class Minter:
             total_time = end - start
             print(
                 "SUBMITTED: {}/{}\tTX: {:.2f}s\tFEE: {:.2f}s\tOFFER: {:.2f}s\tTOTAL: {:.2f}s".format(
-                    i + starting_spend_index, len(spend_bundles), tx_time, fee_time, offer_time, total_time
+                    i + starting_spend_index + 1, len(spend_bundles), tx_time, fee_time, offer_time, total_time
                 )
             )
         if failed_offers:
