@@ -4,7 +4,7 @@ with open("README.md", "rt") as fh:
     long_description = fh.read()
 
 dependencies = [
-    "chia-blockchain @ git+ssh://git@github.com/Chia-Network/chia-blockchain.git@gw.bulk_minting",
+    "chia-blockchain @ git+ssh://git@github.com/Chia-Network/chia-blockchain.git@gw.bulk_mint_nfts",
     "packaging==21.3",
     "pytest",
     "pytest-asyncio",
@@ -34,6 +34,7 @@ dev_dependencies = [
     "types-pkg_resources",
     "types-pyyaml",
     "types-setuptools",
+    "types-docutils",
 ]
 
 setup(

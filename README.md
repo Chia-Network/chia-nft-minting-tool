@@ -9,11 +9,13 @@
 
 - Start testnet wallet and node: `chia start wallet`, and `chia start node`
 
+- Create a fresh wallet and fund it with 2 coins, small amounts like 0.001 xch are fine
+
+- Create a DID for the wallet: `chia wallet did create`. This creates an NFT wallet with the DID id
+
+- Create a regular NFT wallet (where our minted NFTs will be stored since we don't attach the DID during minting): `chia wallet nft create`
+
 - Make sure the wallet and node are fully synced
-
-- Make sure you have a DID wallet with attached NFT wallet
-
-- Make sure you have at least 2 xch coins with large enough amounts(one for creating the spend bundles and one for paying fees)
 
 ## Usage Examples
 

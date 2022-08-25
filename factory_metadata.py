@@ -32,7 +32,7 @@ async def create_target_sample() -> List[Any]:
 
 
 async def main(has_targets: bool) -> None:
-    count = 100
+    count = 1000
     header = [
         "hash",
         "uris",
