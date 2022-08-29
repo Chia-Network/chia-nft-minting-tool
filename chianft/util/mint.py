@@ -183,12 +183,10 @@ class Minter:
         # select a coin to use for fees
         assert isinstance(fee, int)
         total_fee_to_pay = len(spend_bundles) * fee
-        print("Selecting Fee coin")
         fee_coins = await self.wallet_client.select_coins(  # type: ignore
             amount=total_fee_to_pay, wallet_id=self.xch_wallet_id, excluded_coins=[xch_coin_to_spend]
         )
         fee_coin = fee_coins[0]
-        print("Fee coin selected")
 
         offer_time: float = 0.0
         # start submit loop
@@ -225,6 +223,8 @@ class Minter:
                 if "DOUBLE_SPEND" in err.args[0]["error"]:
                     print("SpendBundle was already submitted, skipping")
                     continue
+                elif "INVALID_FEE_TOO_CLOSE_TO_ZERO" in err.args[0]["error"]:
+                    print("A higher fee than {} mojo is needed for inclusion into mempool.".format(fee))
                 else:
                     print(err)
                     return
@@ -246,13 +246,13 @@ class Minter:
             await self.wait_tx_confirmed(tx_id)
             tx_time_end = time.monotonic()
 
-            # Need to wait for the NFT wallet to catch up
+            # Need to wait for the NFT wallet to catch up.
+            # If offer creation is running slow, add an extra 20s wait
             if i > 0 and offer_time > 30:
                 await asyncio.sleep(30)
             else:
                 await asyncio.sleep(10)
 
-            failed_offers = []
             if create_sell_offer:
                 offer_time_start = time.monotonic()
                 assert isinstance(self.wallet_client, WalletRpcClient)
@@ -263,7 +263,6 @@ class Minter:
                     except ValueError as err:
                         print("Failed to include offer for NFT: {}".format(launcher_id))
                         print("Effor creating offer: {}".format(err))
-                        failed_offers.append(launcher_id)
                         await asyncio.sleep(5)
                         continue
                     filepath = "offers/{}.offer".format(launcher_id)
@@ -272,9 +271,6 @@ class Minter:
                         file.write(offer.to_bech32())
                 offer_time_end = time.monotonic()
                 offer_time = offer_time_end - offer_time_start
-
-            if offer_time > 30:
-                await asyncio.sleep(30)
 
             end = time.monotonic()
             tx_time = tx_time_end - tx_time_start
@@ -285,10 +281,6 @@ class Minter:
                     i + starting_spend_index + 1, len(spend_bundles), tx_time, fee_time, offer_time, total_time
                 )
             )
-        if failed_offers:
-            print("Failed to create offers for the following NFT ids:")
-            for launcher_id in failed_offers:
-                print(launcher_id)
 
 
 def read_metadata_csv(

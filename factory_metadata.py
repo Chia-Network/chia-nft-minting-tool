@@ -31,8 +31,7 @@ async def create_target_sample() -> List[Any]:
     return [encode_puzzle_hash(bytes32(token_bytes(32)), "txch")]
 
 
-async def main(has_targets: bool) -> None:
-    count = 1000
+async def main(count: int, has_targets: bool) -> None:
     header = [
         "hash",
         "uris",
@@ -58,8 +57,11 @@ async def main(has_targets: bool) -> None:
 
 
 if __name__ == "__main__":
-    has_targets = False
-    if len(sys.argv) > 1:
-        if sys.argv[1] == "t":
-            has_targets = True
-    asyncio.run(main(has_targets))
+    params = sys.argv[1:]
+    if "t" in params:
+        has_targets = True
+        count = int(list(set(params) - set("t"))[0])
+    else:
+        has_targets = False
+        count = int(params[0])
+    asyncio.run(main(count, has_targets))

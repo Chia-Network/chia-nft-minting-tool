@@ -5,7 +5,8 @@
 
 - Clone this repo, create/activate a new virtual environment
 
-- Install chianft and the necessary chia-blockchain branch with dev dependencies: `pip install --editable .[dev]`
+- Install chianft and the necessary chia-blockchain branch with dev dependencies:
+`pip install --editable .[dev]`
 
 - Start testnet wallet and node: `chia start wallet`, and `chia start node`
 
@@ -22,9 +23,9 @@
 ### Test 1 - Mint and air-drop to targets.
 This test will create 100 NFTs and air-drop them to a target address
 
-1. Generate the factory data. The "t" flag indicates we should include a target address in the metadata csv.
+1. Generate the factory data. The "t" flag indicates we should include a target address in the metadata csv and 1000 indicates the number of nfts to generate.
 ```bash
-python factory_metadata.py t
+python factory_metadata.py t 1000
 ```
 2. Create the spend bundles. Here the -w is the wallet ID for the NFT wallet, -t True indicates we have targets in the metadata csv,  -a and -r are the royalty address and percentage.
 
@@ -39,7 +40,7 @@ chianft create-mint-spend-bundles -w 4 -d False -a txch1q02aryjymlslllpauhu7rhk3
 3. Submit the spend bundles created in output.pkl. The -m flag is for the flat fee used for each spend bundle of 25 NFTs
 
 ```bash
-chianft submit-spend-bundles -m 10 output.pkl
+chianft submit-spend-bundles -m 1000000 output.pkl
 ```
 
 ### Test 2 - Mint and create offers for each NFT
@@ -48,7 +49,7 @@ This test will create 100 NFTs and air-drop them to a target address
 1. Generate the factory data. Don't use a "t" for target flag since we want to mint to our own wallet
 
 ```bash
-python factory_metadata.py
+python factory_metadata.py 1000
 ```
 2. Create the spend bundles.  No -t flag here since we aren't transfering the NFTs out of our wallet.
 
@@ -63,7 +64,7 @@ chianft create-mint-spend-bundles -w 4 -d False -a txch1q02aryjymlslllpauhu7rhk3
 3. Submit the spend bundles created in output.pkl. Here the -o flag indicates we want to create an offer file for each NFT with a trade price of 100 mojo
 
 ```bash
-chianft submit-spend-bundles -m 10 -o 100 output.pkl
+chianft submit-spend-bundles -m 1000000 -o 1000 output.pkl
 ```
 
 
