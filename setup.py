@@ -6,8 +6,6 @@ with open("README.md", "rt") as fh:
 dependencies = [
     "chia-blockchain @ git+ssh://git@github.com/Chia-Network/chia-blockchain.git@gw.bulk_mint_nfts",
     "packaging==21.3",
-    "pytest",
-    "pytest-asyncio",
 ]
 
 dev_dependencies = [
@@ -28,6 +26,9 @@ dev_dependencies = [
     "aiohttp_cors",  # For blackd
     "ipython",  # For asyncio debugging
     "pyinstaller==5.0",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-env",
     "types-aiofiles",
     "types-click",
     "types-cryptography",
