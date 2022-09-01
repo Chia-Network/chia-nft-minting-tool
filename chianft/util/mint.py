@@ -28,7 +28,7 @@ class Minter:
         self,
         nft_wallet_id: Optional[int] = None,
     ) -> None:
-        nft_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.NFT)
+        nft_wallets: List[Dict[str, Any]] = await self.wallet_client.get_wallets(wallet_type=WalletType.NFT)
         if nft_wallet_id is not None:
             if len(nft_wallets) > 1:
                 self.non_did_nft_wallet_ids = [wallet["id"] for wallet in nft_wallets if wallet["id"] != nft_wallet_id]
@@ -56,22 +56,11 @@ class Minter:
         xch_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.STANDARD_WALLET)
         self.xch_wallet_id = xch_wallets[0]["id"]
 
-    async def get_nft_count(self, wallet_id: int):
-        nft_list = await self.wallet_client.list_nfts(wallet_id=wallet_id)
-        return len(nft_list)
-
     async def get_funding_coin(self, amount: int) -> Coin:
         coins = await self.wallet_client.select_coins(amount=amount, wallet_id=self.xch_wallet_id)  # type: ignore
         if len(coins) > 1:
             raise ValueError("Bulk minting requires a single coin with value greater than %s" % amount)
         return coins[0]
-
-    async def get_mempool_cost(self) -> uint64:
-        mempool_items = await self.node_client.get_all_mempool_items()  # type: ignore
-        cost = 0
-        for item in mempool_items.values():
-            cost += item["cost"]
-        return uint64(cost)
 
     async def get_tx_from_mempool(self, sb_name: bytes32) -> Tuple[bool, Optional[bytes32]]:
         mempool_items = await self.node_client.get_all_mempool_items()  # type: ignore
@@ -87,13 +76,6 @@ class Minter:
                 return True
             else:
                 await asyncio.sleep(1)
-
-    async def count_nfts(self) -> int:
-        nft_count = 0
-        for i in self.non_did_nft_wallet_ids:
-            nft_len = len((await self.wallet_client.list_nfts(wallet_id=i))["nft_list"])
-            nft_count += nft_len
-        return nft_count
 
     async def create_spend_bundles(
         self,
@@ -200,7 +182,7 @@ class Minter:
             if fee > 0:
                 fee_tx = await self.wallet_client.create_signed_transaction(  # type: ignore
                     additions=[{"amount": fee_coin.amount - fee, "puzzle_hash": fee_coin.puzzle_hash}],
-                    coins={fee_coin},
+                    coins=[fee_coin],
                     fee=uint64(fee),
                 )
                 final_sb = SpendBundle.aggregate([fee_tx.spend_bundle, sb])

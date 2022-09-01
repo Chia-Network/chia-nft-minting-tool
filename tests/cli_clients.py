@@ -15,6 +15,7 @@ from chia.types.spend_bundle import SpendBundle
 from chia.util.bech32m import encode_puzzle_hash
 from chia.util.ints import uint64
 from chia.wallet.util.wallet_types import WalletType
+from chia.wallet.wallet_info import WalletInfo
 
 ACS = Program.to(1)
 ACS_PH = ACS.get_tree_hash()
@@ -60,18 +61,40 @@ class WalletClientMock:
     def __init__(self, sim_client):
         self.sim_client = sim_client
         self.used_coins = []
+        self.did_coin = None
 
     # These are the only two methods we need
     async def select_coins(self, amount, wallet_id, excluded_coins=[]) -> List[Coin]:
+        if self.did_coin:
+            excluded_coins.append(self.did_coin)
         coins = await self.sim_client.get_coin_records_by_puzzle_hashes([ACS_PH], include_spent_coins=False)
-
         coin = [coin for coin in coins if coin not in excluded_coins + self.used_coins][0]
         self.used_coins.append(coin)
         return [coin.coin]
         # return [[coin.coin for coin in coins][0]]
 
+    async def _assign_wallets(self):
+        self.wallets = [
+            WalletInfo(1, "STD WALLET", WalletType.STANDARD_WALLET.value, ""),
+            WalletInfo(2, "DID WALLET", WalletType.DECENTRALIZED_ID.value, ""),
+            WalletInfo(3, "NFT WALLET 1", WalletType.NFT.value, ""),
+            WalletInfo(4, "NFT WALLET 2", WalletType.NFT.value, ""),
+        ]
+
+    async def _assign_did(self):
+        coins = await self.select_coins(1, 1)
+        self.did_coin = coins[0]
+        self.did_id = encode_puzzle_hash(self.did_coin.name(), "did:chia:")
+
+    async def get_nft_wallet_did(self, wallet_id):
+        did_addr = encode_puzzle_hash(self.did_coin.puzzle_hash, "did:chia:")
+        return {"did_id": did_addr, "success": True}
+
+    async def get_did_id(self, wallet_id):
+        return {"coin_id": "0x" + self.did_coin.name().hex(), "my_did": self.did_id, "wallet_id": 2, "success": True}
+
     async def get_wallets(self, wallet_type: WalletType) -> List[Dict[str, int]]:
-        return [{"id": wallet_type.value}]
+        return [wallet.to_json_dict() for wallet in self.wallets if wallet.type == wallet_type]
 
     async def get_next_address(self, wallet_id: int, new_address: bool) -> str:
         return encode_puzzle_hash(bytes32(token_bytes(32)), "xch")
@@ -146,7 +169,10 @@ async def get_node_and_wallet_clients(full_node_rpc_port: int, wallet_rpc_port: 
     for i in range(2):
         await sim.farm_block(ACS_PH)
     client = FullNodeClientMock(sim)
-    return client, WalletClientMock(client)
+    wallet_client = WalletClientMock(client)
+    await wallet_client._assign_wallets()
+    await wallet_client._assign_did()
+    return client, wallet_client
 
 
 async def get_node_client(full_node_rpc_port: int):
