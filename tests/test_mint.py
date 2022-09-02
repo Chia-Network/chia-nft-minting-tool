@@ -51,7 +51,6 @@ def create_metadata(filename: str, mint_total: int, has_targets: bool) -> str:
 def test_mint_from_did(has_targets):
     mint_total = 10
     chunk_size = 5
-    # has_targets = True
 
     runner = CliRunner()
     with runner.isolated_filesystem():
@@ -79,6 +78,8 @@ def test_mint_from_did(has_targets):
         )
         result = runner.invoke(cli, ["submit-spend-bundles", "--fee", 10, output_file])
 
+    # traceback.print_exception(*result.exc_info)
+    # breakpoint()
     assert sb_result.exception is None
     assert result.exception is None
 
@@ -87,7 +88,6 @@ def test_mint_from_did(has_targets):
 def test_mint_from_xch(has_targets):
     mint_total = 10
     chunk_size = 5
-    # has_targets = True
 
     runner = CliRunner()
     with runner.isolated_filesystem():
@@ -113,9 +113,8 @@ def test_mint_from_xch(has_targets):
                 output_file,
             ],
         )
-        # breakpoint()
 
-        result = runner.invoke(cli, ["submit-spend-bundles", "--fee", 0, output_file])
+        result = runner.invoke(cli, ["submit-spend-bundles", "--fee", 10, output_file])
 
     # traceback.print_exception(*result.exc_info)
     # breakpoint()
