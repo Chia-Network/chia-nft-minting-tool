@@ -132,7 +132,7 @@ class WalletClientMock:
         target_list: Optional[List[str]] = None,
         mint_number_start: Optional[int] = 1,
         mint_total: Optional[int] = None,
-        xch_coins: Optional[List[Coin]] = None,
+        xch_coins: Optional[List[Dict]] = None,
         xch_change_target: Optional[str] = None,
         new_innerpuzhash: Optional[str] = None,
         did_coin: Optional[Dict] = None,

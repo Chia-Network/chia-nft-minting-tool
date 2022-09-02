@@ -2,7 +2,7 @@ import asyncio
 import csv
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 from chia.rpc.full_node_rpc_client import FullNodeRpcClient
 from chia.rpc.wallet_rpc_client import WalletRpcClient
@@ -16,14 +16,12 @@ from chia.wallet.did_wallet.did_wallet_puzzles import LAUNCHER_PUZZLE_HASH
 from chia.wallet.trading.offer import Offer
 from chia.wallet.util.wallet_types import WalletType
 
-from tests.cli_clients import FullNodeClientMock, WalletClientMock
-
 
 class Minter:
     def __init__(
         self,
-        wallet_client: Union[WalletRpcClient, WalletClientMock],
-        node_client: Union[FullNodeRpcClient, FullNodeClientMock],
+        wallet_client: WalletRpcClient,
+        node_client: FullNodeRpcClient,
     ) -> None:
         self.wallet_client = wallet_client
         self.node_client = node_client
@@ -123,16 +121,14 @@ class Minter:
                 royalty_address=royalty_address,
                 mint_number_start=i + 1,
                 mint_total=mint_total,
-                xch_coins=[next_coin.to_json_dict()],  # type: ignore
+                xch_coins=[next_coin.to_json_dict()],
                 xch_change_target=next_coin.to_json_dict()["puzzle_hash"],
                 did_coin=did_coin_dict,
                 did_lineage_parent=did_lineage_parent,
                 mint_from_did=mint_from_did,
             )
             if not resp["success"]:
-                raise ValueError(
-                    "SpendBundle could not be created for metadata rows: %s to %s" % (i, i + chunk)  # type: ignore
-                )
+                raise ValueError("SpendBundle could not be created for metadata rows: %s to %s" % (i, i + chunk))
             sb = SpendBundle.from_json_dict(resp["spend_bundle"])
             spend_bundles.append(bytes(sb))
             next_coin = [c for c in sb.additions() if c.puzzle_hash == funding_coin.puzzle_hash][0]

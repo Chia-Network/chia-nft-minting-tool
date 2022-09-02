@@ -51,11 +51,14 @@ def cli(ctx: click.Context) -> None:
     type=bool,
     help="Set to True for minting NFTs from a DID. The DID must be attached to the NFT wallet you select",
 )
-@click.option("-a", "--royalty-address", required=False, help="A standard XCH address where royalties will be sent")
+@click.option(
+    "-a", "--royalty-address", required=False, default="", help="A standard XCH address where royalties will be sent"
+)
 @click.option(
     "-r",
     "--royalty-percentage",
     required=False,
+    default=0,
     help="Percentage in basis points of offer price to be paid as royalty, up to 10000 (100%)",
 )
 @click.option(
@@ -88,8 +91,8 @@ def create_spend_bundles_cmd(
     bundle_output: Path,
     wallet_id: int,
     mint_from_did: Optional[bool] = False,
-    royalty_address: Optional[str] = None,
-    royalty_percentage: Optional[int] = None,
+    royalty_address: Optional[str] = "",
+    royalty_percentage: Optional[int] = 0,
     has_targets: Optional[bool] = False,
     chunk: Optional[int] = 25,
     wallet_rpc_port: Optional[int] = None,
@@ -107,14 +110,13 @@ def create_spend_bundles_cmd(
 
         try:
             minter = Minter(wallet_client, node_client)
-            # await minter.get_wallet_ids(int(wallet_id))
             spend_bundles = await minter.create_spend_bundles(
                 metadata_input,
                 bundle_output,
                 int(wallet_id),
                 mint_from_did,
                 royalty_address=royalty_address,
-                royalty_percentage=royalty_percentage,
+                royalty_percentage=int(royalty_percentage),
                 has_targets=has_targets,
                 chunk=chunk,
             )
