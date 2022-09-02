@@ -87,7 +87,7 @@ class Minter:
         bundle_output: Path,
         wallet_id: int,
         mint_from_did: Optional[bool] = False,
-        royalty_address: Optional[str] = None,
+        royalty_address: Optional[str] = "",
         royalty_percentage: Optional[int] = 0,
         has_targets: Optional[bool] = True,
         chunk: Optional[int] = 25,
@@ -111,22 +111,24 @@ class Minter:
             did_coin = None
             did_coin_dict = None
         did_lineage_parent = None
-        # assert isinstance(self.wallet_client, WalletRpcClient)
-        for i in range(0, mint_total, chunk):  # type: ignore
-            resp = await self.wallet_client.nft_mint_bulk(  # type: ignore
+        assert isinstance(chunk, int)
+        assert isinstance(royalty_percentage, int)
+        assert isinstance(royalty_address, str)
+        for i in range(0, mint_total, chunk):
+            resp = await self.wallet_client.nft_mint_bulk(
                 wallet_id=self.nft_wallet_id,
-                metadata_list=metadata_list[i : i + chunk],  # type: ignore
-                target_list=target_list[i : i + chunk],  # type: ignore
-                royalty_percentage=royalty_percentage,  # type: ignore
-                royalty_address=royalty_address,  # type: ignore
+                metadata_list=metadata_list[i : i + chunk],
+                target_list=target_list[i : i + chunk],
+                royalty_percentage=royalty_percentage,
+                royalty_address=royalty_address,
                 mint_number_start=i + 1,
                 mint_total=mint_total,
                 xch_coins=[next_coin.to_json_dict()],  # type: ignore
                 xch_change_target=next_coin.to_json_dict()["puzzle_hash"],
-                did_coin=did_coin_dict,  # type: ignore
+                did_coin=did_coin_dict,
                 did_lineage_parent=did_lineage_parent,
                 mint_from_did=mint_from_did,
-            )  # type: ignore
+            )
             if not resp["success"]:
                 raise ValueError(
                     "SpendBundle could not be created for metadata rows: %s to %s" % (i, i + chunk)  # type: ignore
@@ -284,7 +286,7 @@ def read_metadata_csv(
     with open(file_path, "r") as f:
         csv_reader = csv.reader(f)
         bulk_data = list(csv_reader)
-    metadata_list = []
+    metadata_list: List[Dict[str, Any]] = []
     if has_header:
         header_row = bulk_data[0]
         rows = bulk_data[1:]
