@@ -2,11 +2,13 @@ import asyncio
 import csv
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
+from chia.rpc.full_node_rpc_client import FullNodeRpcClient
 from chia.rpc.wallet_rpc_client import WalletRpcClient
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.sized_bytes import bytes32
+from chia.types.coin_record import CoinRecord
 from chia.types.spend_bundle import SpendBundle
 from chia.util.byte_types import hexstr_to_bytes
 from chia.util.ints import uint64
@@ -14,12 +16,14 @@ from chia.wallet.did_wallet.did_wallet_puzzles import LAUNCHER_PUZZLE_HASH
 from chia.wallet.trading.offer import Offer
 from chia.wallet.util.wallet_types import WalletType
 
+from tests.cli_clients import FullNodeClientMock, WalletClientMock
+
 
 class Minter:
     def __init__(
         self,
-        wallet_client,
-        node_client,
+        wallet_client: Union[WalletRpcClient, WalletClientMock],
+        node_client: Union[FullNodeRpcClient, FullNodeClientMock],
     ) -> None:
         self.wallet_client = wallet_client
         self.node_client = node_client
@@ -34,7 +38,7 @@ class Minter:
                 self.non_did_nft_wallet_ids = [wallet["id"] for wallet in nft_wallets if wallet["id"] != nft_wallet_id]
             self.nft_wallet_id = nft_wallet_id
             self.did_coin_id = None
-            self.did_wallet_id = None
+            self.did_wallet_id: int = 0
 
             did_id_for_nft = (await self.wallet_client.get_nft_wallet_did(wallet_id=nft_wallet_id))["did_id"]
             did_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.DECENTRALIZED_ID)
@@ -96,7 +100,10 @@ class Minter:
         spend_bundles = []
         if mint_from_did:
             did = await self.wallet_client.get_did_id(wallet_id=self.did_wallet_id)
-            did_coin_record = await self.node_client.get_coin_record_by_name(hexstr_to_bytes(did["coin_id"]))
+            did_coin_record: Optional[CoinRecord] = await self.node_client.get_coin_record_by_name(
+                bytes32.from_hexstr(did["coin_id"])
+            )
+            assert isinstance(did_coin_record, CoinRecord)
             did_coin = did_coin_record.coin
             assert isinstance(did_coin, Coin)
             did_coin_dict: Optional[Dict] = did_coin.to_json_dict()
@@ -114,7 +121,7 @@ class Minter:
                 royalty_address=royalty_address,  # type: ignore
                 mint_number_start=i + 1,
                 mint_total=mint_total,
-                xch_coins=[next_coin.to_json_dict()],
+                xch_coins=[next_coin.to_json_dict()],  # type: ignore
                 xch_change_target=next_coin.to_json_dict()["puzzle_hash"],
                 did_coin=did_coin_dict,  # type: ignore
                 did_lineage_parent=did_lineage_parent,
@@ -150,6 +157,7 @@ class Minter:
         for i, sb in enumerate(spend_bundles):
             xch_coin_to_spend = [coin for coin in sb.removals() if coin.amount > 1][0]
             coin_record = await self.node_client.get_coin_record_by_name(xch_coin_to_spend.name())
+            assert isinstance(coin_record, CoinRecord)
             if coin_record.spent_block_index == 0:
                 starting_spend_index = i
                 if starting_spend_index > 0:
@@ -165,10 +173,11 @@ class Minter:
         # select a coin to use for fees
         assert isinstance(fee, int)
         total_fee_to_pay = len(spend_bundles) * fee
-        fee_coins = await self.wallet_client.select_coins(  # type: ignore
-            amount=total_fee_to_pay, wallet_id=self.xch_wallet_id, excluded_coins=[xch_coin_to_spend]
-        )
-        fee_coin = fee_coins[0]
+        if total_fee_to_pay > 0:
+            fee_coins = await self.wallet_client.select_coins(  # type: ignore
+                amount=total_fee_to_pay, wallet_id=self.xch_wallet_id, excluded_coins=[xch_coin_to_spend]
+            )
+            fee_coin = fee_coins[0]
 
         offer_time: float = 0.0
         # start submit loop
@@ -186,11 +195,13 @@ class Minter:
                     fee=uint64(fee),
                 )
                 final_sb = SpendBundle.aggregate([fee_tx.spend_bundle, sb])
+                # Setup the next fee coin for the next spend bundle
+                fee_coin = [coin for coin in final_sb.additions() if coin.parent_coin_info == fee_coin.name()][0]
             else:
                 final_sb = sb
+
             fee_time_end = time.monotonic()
-            # Setup the next fee coin for the next spend bundle
-            fee_coin = [coin for coin in final_sb.additions() if coin.parent_coin_info == fee_coin.name()][0]
+
             # Keep the launcher coins for creating offers
             launcher_ids = [coin.name().hex() for coin in sb.removals() if coin.puzzle_hash == LAUNCHER_PUZZLE_HASH]
 
