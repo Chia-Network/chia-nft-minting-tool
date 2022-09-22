@@ -1,10 +1,10 @@
 from setuptools import find_packages, setup
 
-with open("README.md", "rt") as fh:
+with open("README.md", "rt", encoding="utf-8") as fh:
     long_description = fh.read()
 
 dependencies = [
-    "chia-blockchain @ git+ssh://git@github.com/Chia-Network/chia-blockchain.git@gw.bulk_mint_nfts",
+    "chia-blockchain @ git+ssh://git@github.com/Chia-Network/chia-blockchain.git@main",
     "packaging==21.3",
 ]
 

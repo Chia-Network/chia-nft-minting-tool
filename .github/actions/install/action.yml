@@ -1,0 +1,31 @@
+name: "Install chia-blockchain"
+
+description: "Run the platform appropriate installer script."
+
+inputs:
+  python-version:
+    description: "Value to be set for INSTALL_PYTHON_VERSION."
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run install script (macOS, Ubuntu)
+      if: runner.os == 'macos' || runner.os == 'linux'
+      shell: bash
+      env:
+        INSTALL_PYTHON_VERSION: ${{ inputs.python-version }}
+      run: |
+        python -m venv venv
+        . ./venv/bin/activate
+        pip install --editable .[dev]
+    - name: Run install script (Windows)
+      if: runner.os == 'windows'
+      shell: pwsh
+      env:
+        INSTALL_PYTHON_VERSION: ${{ inputs.python-version }}
+      run: |
+        python -m venv venv
+        .\venv\Scripts\Activate.ps1
+        pip install --editable .[dev]
