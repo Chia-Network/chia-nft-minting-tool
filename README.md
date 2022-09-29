@@ -5,8 +5,8 @@
 
 - Clone this repo, create/activate a new virtual environment
 
-- Install chianft and the necessary chia-blockchain branch with dev dependencies:
-`pip install --editable .[dev]`
+- Install chianft and the necessary chia-blockchain branch:
+`pip install --editable .`
 
 - Start testnet wallet and node: `chia start wallet`, and `chia start node`
 
@@ -67,6 +67,17 @@ chianft create-mint-spend-bundles -w 4 -d False -a txch1q02aryjymlslllpauhu7rhk3
 chianft submit-spend-bundles -m 1000000 -o 1000 output.pkl
 ```
 
+## Testing
+Tests are located in the tests directory. To run them, make sure to install the tool with dev dependencies:
+
+```bash
+pip install --editable .[dev]
+```
+
+To run the tests use:
+```bash
+pytest tests/test_mint.py
+```
 
 # Tool Specification
 
