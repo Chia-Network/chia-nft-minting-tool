@@ -4,7 +4,7 @@ with open("README.md", "rt") as fh:
     long_description = fh.read()
 
 dependencies = [
-    "chia-blockchain @ git+ssh://git@github.com/Chia-Network/chia-blockchain.git@gw.mint_from_did",
+    "chia-blockchain @ git+ssh://git@github.com/Chia-Network/chia-blockchain.git@main",
     "packaging==21.3",
 ]
 
