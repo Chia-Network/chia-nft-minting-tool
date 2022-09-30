@@ -1,12 +1,17 @@
-# ChiaNFT - WIP
+# ChiaNFT
 
 ## Setup Instructions
 - Stop any running wallet/node instances: `chia stop -d all`
 
 - Clone this repo, create/activate a new virtual environment
+```bash
+git clone https://github.com/Chia-Network/chia-nft-minting-tool.git
+```
 
-- Install chianft and the necessary chia-blockchain branch:
-`pip install --editable .`
+- Install chianft and the necessary chia-blockchain branch (make sure to include the '.' at the end):
+```bash
+pip install --extra-index https://pypi.chia.net/simple/ --editable .
+```
 
 - Start testnet wallet and node: `chia start wallet`, and `chia start node`
 
