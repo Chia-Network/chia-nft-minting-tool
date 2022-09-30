@@ -76,7 +76,7 @@ chianft submit-spend-bundles -m 1000000 -o 1000 output.pkl
 Tests are located in the tests directory. To run them, make sure to install the tool with dev dependencies:
 
 ```bash
-pip install --editable .[dev]
+pip install --extra-index https://pypi.chia.net/simple/ --editable .[dev]
 ```
 
 To run the tests use:
