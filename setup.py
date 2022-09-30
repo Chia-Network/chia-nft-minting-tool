@@ -10,6 +10,7 @@ dependencies = [
 
 dev_dependencies = [
     "build",
+    "click~=8.1",
     "coverage",
     "pre-commit",
     "pylint",
@@ -61,6 +62,7 @@ setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "License :: OSI Approved :: Apache Software License",
         "Topic :: Security :: Cryptography",
     ],
@@ -68,7 +70,7 @@ setup(
         dev=dev_dependencies,
     ),
     project_urls={
-        "Bug Reports": "https://github.com/Chia-Network/chianft",
-        "Source": "https://github.com/Chia-Network/chianft",
+        "Bug Reports": "https://github.com/Chia-Network/chia-nft-minting-tool",
+        "Source": "https://github.com/Chia-Network/chia-nft-minting-tool",
     },
 )
