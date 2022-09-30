@@ -34,13 +34,13 @@ chianft create-mint-spend-bundles -w 3 -d True -a txch1q02aryjymlslllpauhu7rhk38
 ```
 Non-did version:
 ```
-chianft create-mint-spend-bundles -w 4 -d False -a txch1q02aryjymlslllpauhu7rhk3802lk3e5peuce8gy947dnggpegysqegkzk -r 300 -t True metadata.csv output.pkl
+chianft create-mint-spend-bundles -w 3 -d False -a txch1q02aryjymlslllpauhu7rhk3802lk3e5peuce8gy947dnggpegysqegkzk -r 300 -t True metadata.csv output.pkl
 ```
 
 3. Submit the spend bundles created in output.pkl. The -m flag is for the flat fee used for each spend bundle of 25 NFTs
 
 ```bash
-chianft submit-spend-bundles -m 1000000 output.pkl
+chianft submit-spend-bundles -m 1000 output.pkl
 ```
 
 ### Test 2 - Mint and create offers for each NFT
@@ -58,7 +58,7 @@ chianft create-mint-spend-bundles -w 3 -d True -a txch1q02aryjymlslllpauhu7rhk38
 ```
 Non-did version:
 ```bash
-chianft create-mint-spend-bundles -w 4 -d False -a txch1q02aryjymlslllpauhu7rhk3802lk3e5peuce8gy947dnggpegysqegkzk -r 300 metadata.csv output.pkl
+chianft create-mint-spend-bundles -w 3 -d False -a txch1q02aryjymlslllpauhu7rhk3802lk3e5peuce8gy947dnggpegysqegkzk -r 300 metadata.csv output.pkl
 ```
 
 3. Submit the spend bundles created in output.pkl. Here the -o flag indicates we want to create an offer file for each NFT with a trade price of 100 mojo

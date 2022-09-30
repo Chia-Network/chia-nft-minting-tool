@@ -34,7 +34,10 @@ def cli(ctx: click.Context) -> None:
     ctx.ensure_object(dict)
 
 
-@cli.command("create-mint-spend-bundles", short_help="Create a set of spend bundles for minting NFTs")
+@cli.command(
+    "create-mint-spend-bundles",
+    short_help="Create a set of spend bundles for minting NFTs",
+)
 @click.argument("metadata_input", nargs=1, required=True, type=click.Path(exists=True))
 @click.argument("bundle_output", nargs=1, required=True, type=click.Path())
 @click.option(
@@ -52,7 +55,11 @@ def cli(ctx: click.Context) -> None:
     help="Set to True for minting NFTs from a DID. The DID must be attached to the NFT wallet you select",
 )
 @click.option(
-    "-a", "--royalty-address", required=False, default="", help="A standard XCH address where royalties will be sent"
+    "-a",
+    "--royalty-address",
+    required=False,
+    default="",
+    help="A standard XCH address where royalties will be sent",
 )
 @click.option(
     "-r",
@@ -69,7 +76,11 @@ def cli(ctx: click.Context) -> None:
     help="Select whether the input csv includes a column of target addresses to send NFTs",
 )
 @click.option(
-    "-c", "--chunk", required=False, default=25, help="The number of NFTs to mint per spend bundle. Default: 25"
+    "-c",
+    "--chunk",
+    required=False,
+    default=25,
+    help="The number of NFTs to mint per spend bundle. Default: 25",
 )
 @click.option(
     "-wp",
@@ -78,7 +89,13 @@ def cli(ctx: click.Context) -> None:
     type=int,
     default=None,
 )
-@click.option("-f", "--fingerprint", help="Set the fingerprint to specify which wallet to use", type=int, default=None)
+@click.option(
+    "-f",
+    "--fingerprint",
+    help="Set the fingerprint to specify which wallet to use",
+    type=int,
+    default=None,
+)
 @click.option(
     "-np",
     "--node-rpc-port",
@@ -106,7 +123,9 @@ def create_spend_bundles_cmd(
     """
 
     async def do_command():
-        node_client, wallet_client = await get_node_and_wallet_clients(node_rpc_port, wallet_rpc_port, fingerprint)
+        node_client, wallet_client = await get_node_and_wallet_clients(
+            node_rpc_port, wallet_rpc_port, fingerprint
+        )
 
         try:
             minter = Minter(wallet_client, node_client)
@@ -141,7 +160,10 @@ def create_spend_bundles_cmd(
     help="The fee (in mojos) for each spend bundle (25 NFTs)",
 )
 @click.option(
-    "-o", "--create-sell-offer", required=False, help="Create an offer for each created NFT at the specified price."
+    "-o",
+    "--create-sell-offer",
+    required=False,
+    help="Create an offer for each created NFT at the specified price.",
 )
 @click.option(
     "-wp",
@@ -150,7 +172,13 @@ def create_spend_bundles_cmd(
     type=int,
     default=None,
 )
-@click.option("-f", "--fingerprint", help="Set the fingerprint to specify which wallet to use", type=int, default=None)
+@click.option(
+    "-f",
+    "--fingerprint",
+    help="Set the fingerprint to specify which wallet to use",
+    type=int,
+    default=None,
+)
 @click.option(
     "-np",
     "--node-rpc-port",
@@ -172,7 +200,9 @@ def submit_spend_bundles_cmd(
     """
 
     async def do_command():
-        node_client, wallet_client = await get_node_and_wallet_clients(node_rpc_port, wallet_rpc_port, fingerprint)
+        node_client, wallet_client = await get_node_and_wallet_clients(
+            node_rpc_port, wallet_rpc_port, fingerprint
+        )
 
         try:
             spends = []
@@ -183,7 +213,9 @@ def submit_spend_bundles_cmd(
 
             minter = Minter(wallet_client, node_client)
             # await minter.get_wallet_ids()
-            await minter.submit_spend_bundles(spends, int(fee), create_sell_offer=create_sell_offer)
+            await minter.submit_spend_bundles(
+                spends, int(fee), create_sell_offer=create_sell_offer
+            )
 
         finally:
             node_client.close()

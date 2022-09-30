@@ -23,7 +23,9 @@ async def get_node_client(full_node_rpc_port: Optional[int]):
         return full_node_client
     except Exception as e:
         if isinstance(e, aiohttp.ClientConnectorError):
-            pprint(f"Connection error. Check if full node is running at {full_node_rpc_port}")
+            pprint(
+                f"Connection error. Check if full node is running at {full_node_rpc_port}"
+            )
         else:
             pprint(f"Exception from 'full node' {e}")
         return None
@@ -35,7 +37,9 @@ async def get_wallet_client(wallet_rpc_port: Optional[int]):
             config = load_config(DEFAULT_ROOT_PATH, "config.yaml")
             self_hostname = config["self_hostname"]
             wallet_rpc_port = config["wallet"]["rpc_port"]
-        wallet_client = await WalletRpcClient.create(self_hostname, uint16(wallet_rpc_port), DEFAULT_ROOT_PATH, config)
+        wallet_client = await WalletRpcClient.create(
+            self_hostname, uint16(wallet_rpc_port), DEFAULT_ROOT_PATH, config
+        )
         return wallet_client
     except Exception as e:
         if isinstance(e, aiohttp.ClientConnectorError):
@@ -46,7 +50,9 @@ async def get_wallet_client(wallet_rpc_port: Optional[int]):
 
 
 async def get_node_and_wallet_clients(
-    full_node_rpc_port: Optional[int], wallet_rpc_port: Optional[int], fingerprint: Optional[int]
+    full_node_rpc_port: Optional[int],
+    wallet_rpc_port: Optional[int],
+    fingerprint: Optional[int],
 ):
     try:
         full_node_client = await get_node_client(full_node_rpc_port)
@@ -66,4 +72,8 @@ async def get_node_and_wallet_clients(
 def get_additional_data():
     config = load_config(DEFAULT_ROOT_PATH, "config.yaml")
     selected_network = config["farmer"]["selected_network"]
-    return bytes.fromhex(config["farmer"]["network_overrides"]["constants"][selected_network]["GENESIS_CHALLENGE"])
+    return bytes.fromhex(
+        config["farmer"]["network_overrides"]["constants"][selected_network][
+            "GENESIS_CHALLENGE"
+        ]
+    )

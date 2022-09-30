@@ -67,8 +67,12 @@ class WalletClientMock:
     async def select_coins(self, amount, wallet_id, excluded_coins=[]) -> List[Coin]:
         if self.did_coin:
             excluded_coins.append(self.did_coin)
-        coins = await self.sim_client.get_coin_records_by_puzzle_hashes([ACS_PH], include_spent_coins=False)
-        coin = [coin for coin in coins if coin not in excluded_coins + self.used_coins][0]
+        coins = await self.sim_client.get_coin_records_by_puzzle_hashes(
+            [ACS_PH], include_spent_coins=False
+        )
+        coin = [coin for coin in coins if coin not in excluded_coins + self.used_coins][
+            0
+        ]
         self.used_coins.append(coin)
         return [coin.coin]
         # return [[coin.coin for coin in coins][0]]
@@ -91,10 +95,19 @@ class WalletClientMock:
         return {"did_id": did_addr, "success": True}
 
     async def get_did_id(self, wallet_id):
-        return {"coin_id": "0x" + self.did_coin.name().hex(), "my_did": self.did_id, "wallet_id": 2, "success": True}
+        return {
+            "coin_id": "0x" + self.did_coin.name().hex(),
+            "my_did": self.did_id,
+            "wallet_id": 2,
+            "success": True,
+        }
 
     async def get_wallets(self, wallet_type: WalletType) -> List[Dict[str, int]]:
-        return [wallet.to_json_dict() for wallet in self.wallets if wallet.type == wallet_type]
+        return [
+            wallet.to_json_dict()
+            for wallet in self.wallets
+            if wallet.type == wallet_type
+        ]
 
     async def get_next_address(self, wallet_id: int, new_address: bool) -> str:
         return encode_puzzle_hash(bytes32(token_bytes(32)), "xch")
@@ -116,7 +129,11 @@ class WalletClientMock:
                 conditions.append(Program.to([61, ca.name()]))
         if coins is None:
             coins = await self.select_coins(None, None)  # type: ignore
-        conditions.append(Program.to([51, ACS_PH, sum(c.amount for c in list(coins)) - (total_amount + fee)]))
+        conditions.append(
+            Program.to(
+                [51, ACS_PH, sum(c.amount for c in list(coins)) - (total_amount + fee)]
+            )
+        )
         coin_spends: List[CoinSpend] = [CoinSpend(coins[0], ACS, Program.to(conditions))]  # type: ignore
         if len(coins) > 1:
             for coin in coins[1:]:
@@ -148,11 +165,16 @@ class WalletClientMock:
         xch_spend = CoinSpend(Coin.from_json_dict(xch_coin), ACS, Program.to(xch_conds))
         if mint_from_did:
             did_conds = [[51, bytes32.from_hexstr(did_coin["puzzle_hash"]), int(did_coin["amount"])]]  # type: ignore
-            did_spend = CoinSpend(Coin.from_json_dict(did_coin), ACS, Program.to(did_conds))
+            did_spend = CoinSpend(
+                Coin.from_json_dict(did_coin), ACS, Program.to(did_conds)
+            )
             spend_bundles.append(SpendBundle([xch_spend, did_spend], G2Element()))
         else:
             spend_bundles.append(SpendBundle([xch_spend], G2Element()))
-        return {"success": True, "spend_bundle": SpendBundle.aggregate(spend_bundles).to_json_dict()}
+        return {
+            "success": True,
+            "spend_bundle": SpendBundle.aggregate(spend_bundles).to_json_dict(),
+        }
 
     def close(self):
         return
@@ -164,7 +186,9 @@ class WalletClientMock:
             return
 
 
-async def get_node_and_wallet_clients(full_node_rpc_port: int, wallet_rpc_port: int, fingerprint: int):
+async def get_node_and_wallet_clients(
+    full_node_rpc_port: int, wallet_rpc_port: int, fingerprint: int
+):
     sim = await SpendSim.create(db_path=Path("./sim.db"))
     for i in range(2):
         await sim.farm_block(ACS_PH)

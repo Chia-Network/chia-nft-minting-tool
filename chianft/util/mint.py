@@ -30,16 +30,24 @@ class Minter:
         self,
         nft_wallet_id: Optional[int] = None,
     ) -> None:
-        nft_wallets: List[Dict[str, Any]] = await self.wallet_client.get_wallets(wallet_type=WalletType.NFT)
+        nft_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.NFT)
         if nft_wallet_id is not None:
             if len(nft_wallets) > 1:
-                self.non_did_nft_wallet_ids = [wallet["id"] for wallet in nft_wallets if wallet["id"] != nft_wallet_id]
+                self.non_did_nft_wallet_ids = [
+                    wallet["id"]
+                    for wallet in nft_wallets
+                    if wallet["id"] != nft_wallet_id
+                ]
             self.nft_wallet_id = nft_wallet_id
             self.did_coin_id = None
             self.did_wallet_id: int = 0
 
-            did_id_for_nft = (await self.wallet_client.get_nft_wallet_did(wallet_id=nft_wallet_id))["did_id"]
-            did_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.DECENTRALIZED_ID)
+            did_id_for_nft = (
+                await self.wallet_client.get_nft_wallet_did(wallet_id=nft_wallet_id)
+            )["did_id"]
+            did_wallets = await self.wallet_client.get_wallets(
+                wallet_type=WalletType.DECENTRALIZED_ID
+            )
             for wallet in did_wallets:
                 did_info = await self.wallet_client.get_did_id(wallet_id=wallet["id"])
                 if did_info["my_did"] == did_id_for_nft:
@@ -49,22 +57,31 @@ class Minter:
         else:
             self.non_did_nft_wallet_ids = []
             for wallet in nft_wallets:
-                did_id = (await self.wallet_client.get_nft_wallet_did(wallet_id=wallet["id"]))["did_id"]
+                did_id = (
+                    await self.wallet_client.get_nft_wallet_did(wallet_id=wallet["id"])
+                )["did_id"]
                 if did_id is None:
                     self.non_did_nft_wallet_ids.append(wallet["id"])
                 else:
                     self.nft_wallet_id = wallet["id"]
 
-        xch_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.STANDARD_WALLET)
+        xch_wallets = await self.wallet_client.get_wallets(
+            wallet_type=WalletType.STANDARD_WALLET
+        )
         self.xch_wallet_id = xch_wallets[0]["id"]
 
     async def get_funding_coin(self, amount: int) -> Coin:
         coins = await self.wallet_client.select_coins(amount=amount, wallet_id=self.xch_wallet_id)  # type: ignore
         if len(coins) > 1:
-            raise ValueError("Bulk minting requires a single coin with value greater than %s" % amount)
+            raise ValueError(
+                "Bulk minting requires a single coin with value greater than %s"
+                % amount
+            )
         return coins[0]
 
-    async def get_tx_from_mempool(self, sb_name: bytes32) -> Tuple[bool, Optional[bytes32]]:
+    async def get_tx_from_mempool(
+        self, sb_name: bytes32
+    ) -> Tuple[bool, Optional[bytes32]]:
         mempool_items = await self.node_client.get_all_mempool_items()  # type: ignore
         for item in mempool_items.items():
             if bytes32(hexstr_to_bytes(item[1]["spend_bundle_name"])) == sb_name:
@@ -91,14 +108,18 @@ class Minter:
         chunk: Optional[int] = 25,
     ) -> List[bytes]:
         await self.get_wallet_ids(wallet_id)
-        metadata_list, target_list = read_metadata_csv(metadata_input, has_header=True, has_targets=has_targets)
+        metadata_list, target_list = read_metadata_csv(
+            metadata_input, has_header=True, has_targets=has_targets
+        )
         mint_total = len(metadata_list)
         funding_coin: Coin = await self.get_funding_coin(mint_total)
         next_coin = funding_coin
         spend_bundles = []
         if mint_from_did:
             did = await self.wallet_client.get_did_id(wallet_id=self.did_wallet_id)
-            did_coin_record: Optional[CoinRecord] = await self.node_client.get_coin_record_by_name(
+            did_coin_record: Optional[
+                CoinRecord
+            ] = await self.node_client.get_coin_record_by_name(
                 bytes32.from_hexstr(did["coin_id"])
             )
             assert isinstance(did_coin_record, CoinRecord)
@@ -128,17 +149,25 @@ class Minter:
                 mint_from_did=mint_from_did,
             )
             if not resp["success"]:
-                raise ValueError("SpendBundle could not be created for metadata rows: %s to %s" % (i, i + chunk))
+                raise ValueError(
+                    "SpendBundle could not be created for metadata rows: %s to %s"
+                    % (i, i + chunk)
+                )
             sb = SpendBundle.from_json_dict(resp["spend_bundle"])
             spend_bundles.append(bytes(sb))
-            next_coin = [c for c in sb.additions() if c.puzzle_hash == funding_coin.puzzle_hash][0]
+            next_coin = [
+                c for c in sb.additions() if c.puzzle_hash == funding_coin.puzzle_hash
+            ][0]
             if mint_from_did:
                 assert isinstance(did_coin, Coin)
-                did_lineage_parent = [c for c in sb.removals() if c.name() == did_coin.name()][0].parent_coin_info.hex()
+                did_lineage_parent = [
+                    c for c in sb.removals() if c.name() == did_coin.name()
+                ][0].parent_coin_info.hex()
                 did_coin = [
                     c
                     for c in sb.additions()
-                    if (c.parent_coin_info == did_coin.name()) and (c.amount == did_coin.amount)
+                    if (c.parent_coin_info == did_coin.name())
+                    and (c.amount == did_coin.amount)
                 ][0]
                 assert isinstance(did_coin, Coin)
                 did_coin_dict = did_coin.to_json_dict()
@@ -154,12 +183,18 @@ class Minter:
         # Get first unspent spendbundle so we can restart efficiently
         for i, sb in enumerate(spend_bundles):
             xch_coin_to_spend = [coin for coin in sb.removals() if coin.amount > 1][0]
-            coin_record = await self.node_client.get_coin_record_by_name(xch_coin_to_spend.name())
+            coin_record = await self.node_client.get_coin_record_by_name(
+                xch_coin_to_spend.name()
+            )
             assert isinstance(coin_record, CoinRecord)
             if coin_record.spent_block_index == 0:
                 starting_spend_index = i
                 if starting_spend_index > 0:
-                    print("Restarting submit from spend bundle: {}".format(starting_spend_index))
+                    print(
+                        "Restarting submit from spend bundle: {}".format(
+                            starting_spend_index
+                        )
+                    )
                 break
         else:
             raise ValueError("All spend bundles have been spent")
@@ -173,7 +208,9 @@ class Minter:
         total_fee_to_pay = len(spend_bundles) * fee
         if total_fee_to_pay > 0:
             fee_coins = await self.wallet_client.select_coins(  # type: ignore
-                amount=total_fee_to_pay, wallet_id=self.xch_wallet_id, excluded_coins=[xch_coin_to_spend]
+                amount=total_fee_to_pay,
+                wallet_id=self.xch_wallet_id,
+                excluded_coins=[xch_coin_to_spend],
             )
             fee_coin = fee_coins[0]
 
@@ -188,20 +225,33 @@ class Minter:
             # Create a tx for the fee and add to the spend bundle
             if fee > 0:
                 fee_tx = await self.wallet_client.create_signed_transaction(  # type: ignore
-                    additions=[{"amount": fee_coin.amount - fee, "puzzle_hash": fee_coin.puzzle_hash}],
+                    additions=[
+                        {
+                            "amount": fee_coin.amount - fee,
+                            "puzzle_hash": fee_coin.puzzle_hash,
+                        }
+                    ],
                     coins=[fee_coin],
                     fee=uint64(fee),
                 )
                 final_sb = SpendBundle.aggregate([fee_tx.spend_bundle, sb])
                 # Setup the next fee coin for the next spend bundle
-                fee_coin = [coin for coin in final_sb.additions() if coin.parent_coin_info == fee_coin.name()][0]
+                fee_coin = [
+                    coin
+                    for coin in final_sb.additions()
+                    if coin.parent_coin_info == fee_coin.name()
+                ][0]
             else:
                 final_sb = sb
 
             fee_time_end = time.monotonic()
 
             # Keep the launcher coins for creating offers
-            launcher_ids = [coin.name().hex() for coin in sb.removals() if coin.puzzle_hash == LAUNCHER_PUZZLE_HASH]
+            launcher_ids = [
+                coin.name().hex()
+                for coin in sb.removals()
+                if coin.puzzle_hash == LAUNCHER_PUZZLE_HASH
+            ]
 
             # Submit the final spend bundle
             tx_time_start = time.monotonic()
@@ -215,7 +265,11 @@ class Minter:
                     print("SpendBundle was already submitted, skipping")
                     continue
                 elif "INVALID_FEE_TOO_CLOSE_TO_ZERO" in err.args[0]["error"]:
-                    print("A higher fee than {} mojo is needed for inclusion into mempool.".format(fee))
+                    print(
+                        "A higher fee than {} mojo is needed for inclusion into mempool.".format(
+                            fee
+                        )
+                    )
                 else:
                     print(err)
                     return
@@ -230,7 +284,9 @@ class Minter:
                     await asyncio.sleep(1)
                     exception_timer -= 1
                 elif exception_timer == 0:
-                    raise ValueError("Couldn't find tx in mempool after 10 seconds. Retry in a minute")
+                    raise ValueError(
+                        "Couldn't find tx in mempool after 10 seconds. Retry in a minute"
+                    )
 
             # Wait until the TX is confirmed
             assert isinstance(tx_id, bytes32)
@@ -248,9 +304,14 @@ class Minter:
                 offer_time_start = time.monotonic()
                 assert isinstance(self.wallet_client, WalletRpcClient)
                 for launcher_id in launcher_ids:
-                    offer_dict = {launcher_id: -1, self.xch_wallet_id: int(create_sell_offer)}
+                    offer_dict = {
+                        launcher_id: -1,
+                        self.xch_wallet_id: int(create_sell_offer),
+                    }
                     try:
-                        offer, tr = await self.wallet_client.create_offer_for_ids(offer_dict, fee=0)
+                        offer, tr = await self.wallet_client.create_offer_for_ids(
+                            offer_dict, fee=0
+                        )
                     except ValueError as err:
                         print("Failed to include offer for NFT: {}".format(launcher_id))
                         print("Effor creating offer: {}".format(err))
@@ -269,7 +330,12 @@ class Minter:
             total_time = end - start
             print(
                 "SUBMITTED: {}/{}\tTX: {:.2f}s\tFEE: {:.2f}s\tOFFER: {:.2f}s\tTOTAL: {:.2f}s".format(
-                    i + starting_spend_index + 1, len(spend_bundles), tx_time, fee_time, offer_time, total_time
+                    i + starting_spend_index + 1,
+                    len(spend_bundles),
+                    tx_time,
+                    fee_time,
+                    offer_time,
+                    total_time,
                 )
             )
 
@@ -303,7 +369,9 @@ def read_metadata_csv(
     list_headers = ["uris", "meta_uris", "license_uris"]
     targets = []
     for row in rows:
-        meta_dict: Dict[str, Any] = {list_headers[i]: [] for i in range(len(list_headers))}
+        meta_dict: Dict[str, Any] = {
+            list_headers[i]: [] for i in range(len(list_headers))
+        }
         for i, header in enumerate(header_row):
             if header in list_headers:
                 meta_dict[header].append(row[i])
