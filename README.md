@@ -15,22 +15,22 @@ pip install --extra-index https://pypi.chia.net/simple/ --editable .
 
 - Start testnet wallet and node: `chia start wallet`, and `chia start node`
 
-- Create a fresh wallet and fund it with 2 coins, small amounts like 0.001 xch are fine
+- Create a fresh wallet `chia keys generate` and fund it with 2 coins (testnet faucet: https://testnet10-faucet.chia.net/; mainnet faucet: https://faucet.chia.net/), small amounts like 0.001 (t)xch are fine
 
 - Create a DID for the wallet: `chia wallet did create`. This creates an NFT wallet with the DID id
 
 - Create a regular NFT wallet (where our minted NFTs will be stored since we don't attach the DID during minting): `chia wallet nft create`
 
-- Make sure the wallet and node are fully synced
+- Make sure the wallet and node are fully synced `chia wallet show` and `chia show -s` respectively
 
 ## Usage Examples
 
 ### Test 1 - Mint and air-drop to targets.
 This test will create 100 NFTs and air-drop them to a target address
 
-1. Generate the factory data. The "t" flag indicates we should include a target address in the metadata csv and 1000 indicates the number of nfts to generate.
+1. Generate the factory data. The "t" flag indicates we should include a target address in the metadata csv and 100 indicates the number of nfts to generate.
 ```bash
-python factory_metadata.py t 1000
+python factory_metadata.py t 100
 ```
 2. Create the spend bundles. Here the -w is the wallet ID for the NFT wallet, -t True indicates we have targets in the metadata csv,  -a and -r are the royalty address and percentage.
 
@@ -49,14 +49,14 @@ chianft submit-spend-bundles -m 1000 output.pkl
 ```
 
 ### Test 2 - Mint and create offers for each NFT
-This test will create 100 NFTs and air-drop them to a target address
+This test will create 100 NFTs and send them to your own wallet while creating sell offer files for each NFT
 
 1. Generate the factory data. Don't use a "t" for target flag since we want to mint to our own wallet
 
 ```bash
 python factory_metadata.py 1000
 ```
-2. Create the spend bundles.  No -t flag here since we aren't transfering the NFTs out of our wallet.
+2. Create the spend bundles.  No -t flag here since we aren't transferring the NFTs out of our wallet.
 
 ```bash
 chianft create-mint-spend-bundles -w 3 -d True -a txch1q02aryjymlslllpauhu7rhk3802lk3e5peuce8gy947dnggpegysqegkzk -r 300 metadata.csv output.pkl
@@ -66,7 +66,7 @@ Non-did version:
 chianft create-mint-spend-bundles -w 3 -d False -a txch1q02aryjymlslllpauhu7rhk3802lk3e5peuce8gy947dnggpegysqegkzk -r 300 metadata.csv output.pkl
 ```
 
-3. Submit the spend bundles created in output.pkl. Here the -o flag indicates we want to create an offer file for each NFT with a trade price of 100 mojo
+3. Submit the spend bundles created in output.pkl. Here the -o flag indicates we want to create an offer file for each NFT with a trade price of 1000 mojo
 
 ```bash
 chianft submit-spend-bundles -m 1000000 -o 1000 output.pkl
