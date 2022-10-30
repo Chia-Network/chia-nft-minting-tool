@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import csv
 import time
@@ -7,6 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from chia.rpc.full_node_rpc_client import FullNodeRpcClient
 from chia.rpc.wallet_rpc_client import WalletRpcClient
 from chia.types.blockchain_format.coin import Coin
+from chia.types.blockchain_format.program import INFINITE_COST
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_record import CoinRecord
 from chia.types.spend_bundle import SpendBundle
@@ -78,6 +81,18 @@ class Minter:
                 % amount
             )
         return coins[0]
+
+    async def wait_for_mempool(self, sb_cost: uint64) -> uint64:
+        while True:
+            fee_est = await self.node_client.get_fee_estimate([1], sb_cost)
+            mempool_max_size = fee_est["mempool_max_size"]
+            mempool_size = fee_est["mempool_size"]
+            fee_per_cost = fee_est["current_fee_rate"]
+            if mempool_size + sb_cost < mempool_max_size:
+                return fee_per_cost
+            else:
+                print("mempool is full, waiting 20s")
+                await asyncio.sleep(20)
 
     async def get_tx_from_mempool(
         self, sb_name: bytes32
@@ -185,6 +200,16 @@ class Minter:
                 did_coin_dict = did_coin.to_json_dict()
         return spend_bundles
 
+    def spend_bundle_cost(self, sb: SpendBundle) -> uint64:
+        sb_cost = 0
+        for spend in sb.coin_spends:
+            cost, _ = spend.puzzle_reveal.to_program().run_with_cost(
+                INFINITE_COST,
+                spend.solution.to_program(),
+            )
+            sb_cost += cost
+        return uint64(sb_cost)
+
     async def submit_spend_bundles(
         self,
         spend_bundles: List[SpendBundle],
@@ -216,15 +241,19 @@ class Minter:
             Path("offers").mkdir(parents=True, exist_ok=True)
 
         # select a coin to use for fees
+        # coin size is based on fee_per_cost = 5, assuming all sbs are same size as sb[0]
         assert isinstance(fee, int)
-        total_fee_to_pay = len(spend_bundles) * fee
-        if total_fee_to_pay > 0:
-            fee_coins = await self.wallet_client.select_coins(  # type: ignore
-                amount=total_fee_to_pay,
-                wallet_id=self.xch_wallet_id,
-                excluded_coins=[xch_coin_to_spend],
-            )
-            fee_coin = fee_coins[0]
+        estimated_fee = (
+            self.spend_bundle_cost(spend_bundles[0]) * 5 * len(spend_bundles)
+        )
+        # total_fee_to_pay = len(spend_bundles) * fee
+        # if total_fee_to_pay > 0:
+        fee_coins = await self.wallet_client.select_coins(  # type: ignore
+            amount=estimated_fee,
+            wallet_id=self.xch_wallet_id,
+            excluded_coins=[xch_coin_to_spend],
+        )
+        fee_coin = fee_coins[0]
 
         offer_time: float = 0.0
         # start submit loop
@@ -234,8 +263,18 @@ class Minter:
             # TODO: Add dynamic fee estimation
             assert isinstance(fee, int)
             fee_time_start = time.monotonic()
+
+            # Get SB cost and check if we fit in mempool
+            sb_cost = self.spend_bundle_cost(sb)
+            fee_est = await self.node_client.get_fee_estimate([1], sb_cost)
+            if fee_est["mempool_size"] + sb_cost >= fee_est["mempool_max_size"]:
+                fee_per_cost: uint64 = await self.wait_for_mempool(sb_cost)
+            else:
+                fee_per_cost = uint64(fee_est["current_fee_rate"])
+            total_fee = sb_cost * fee_per_cost
+
             # Create a tx for the fee and add to the spend bundle
-            if fee > 0:
+            if fee_per_cost > 0:
                 fee_tx = await self.wallet_client.create_signed_transaction(  # type: ignore
                     additions=[
                         {
@@ -244,7 +283,7 @@ class Minter:
                         }
                     ],
                     coins=[fee_coin],
-                    fee=uint64(fee),
+                    fee=uint64(total_fee),
                 )
                 final_sb = SpendBundle.aggregate([fee_tx.spend_bundle, sb])
                 # Setup the next fee coin for the next spend bundle
@@ -268,6 +307,7 @@ class Minter:
             # Submit the final spend bundle
             tx_time_start = time.monotonic()
             try:
+
                 resp = await self.node_client.push_tx(final_sb)
                 assert resp["success"]
             except ValueError as err:
