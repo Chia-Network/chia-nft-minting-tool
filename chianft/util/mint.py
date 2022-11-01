@@ -198,6 +198,20 @@ class Minter:
             sb_cost += cost
         return uint64(sb_cost)
 
+    async def sb_list(self, spend_bundles: List[SpendBundle]) -> None:
+        current_did = bytes32.from_hexstr(
+            "0x80ebdfe9bba44b0a23e7543ae5bd7f0c80fa2f29a6a3ec664d0de49aaaa5110b"
+        )
+        for i, sb in enumerate(spend_bundles):
+            did_list = [coin for coin in sb.additions() if coin.name() == current_did]
+            if did_list:
+                coins = []
+                with open("coin_ids.txt", "w") as f:
+                    for coin in sb.additions():
+                        coins.append(coin)
+                        f.write("{}\n".format(coin.name().hex()))
+                break
+
     async def submit_spend_bundles(
         self,
         spend_bundles: List[SpendBundle],
@@ -242,6 +256,32 @@ class Minter:
             excluded_coins=[xch_coin_to_spend],
         )
         fee_coin = fee_coins[0]
+
+        ####
+        # Get another coin for dusting
+        dust_amt = uint64(100000000)
+        dust_fee = uint64(100000)
+        coins = await self.wallet_client.select_coins(
+            amount=dust_amt,
+            wallet_id=self.xch_wallet_id,
+            excluded_coins=[xch_coin_to_spend, fee_coin],
+        )
+        duster_coin = coins[0]
+        dust_tx = await self.wallet_client.create_signed_transaction(
+            additions=[
+                {
+                    "amount": duster_coin.amount - dust_fee,
+                    "puzzle_hash": duster_coin.puzzle_hash,
+                }
+            ],
+            coins=[duster_coin],
+            fee=dust_fee,
+        )
+
+        dust_cost = self.spend_bundle_cost(dust_tx.spend_bundle)
+        fee_est = await self.node_client.get_fee_estimate([1], dust_cost)
+
+        ####
 
         offer_time: float = 0.0
         # start submit loop
