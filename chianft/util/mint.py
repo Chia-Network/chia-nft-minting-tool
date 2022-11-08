@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import csv
-
-# import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -92,29 +90,6 @@ class Minter:
             if bytes32(hexstr_to_bytes(item[1]["spend_bundle_name"])) == sb_name:
                 return True, item[0]
         return False, None
-
-    # async def tx_confirmed(self, sb: SpendBundle) -> bool:
-    #     state = await self.node_client.get_blockchain_state()
-    #     breakpoint()
-
-    # async def wait_tx_confirmed(self, tx_id: bytes32, sb: SpendBundle) -> bool:
-    #     print("Waiting for transaction to be confirmed")
-    #     # await self.tx_confirmed(sb)
-    #     state = await self.node_client.get_blockchain_state()
-    #     last_header_hash = state["peak"].header_hash
-    #     while True:
-    #         state = await self.node_client.get_blockchain_state()
-    #         next_header_hash = state["peak"].header_hash
-    #         if next_header_hash != last_header_hash:
-    #             print("Blocked - checking for item in mempool")
-    #             item = await self.node_client.get_mempool_item_by_tx_id(tx_id)  # type: ignore
-    #             if item is None:
-    #                 # tx is no longer in mempool. Need to check if it's been confirmed or kicked.
-    #                 print("TX has exited mempool")
-    #                 return True
-    #         else:
-    #             last_header_hash = next_header_hash
-    #             await asyncio.sleep(1)
 
     async def create_spend_bundles(
         self,
