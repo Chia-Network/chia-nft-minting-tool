@@ -302,7 +302,7 @@ class Minter:
                 resp = await self.node_client.push_tx(final_sb)
                 if resp["success"]:
                     # Monitor the progress of tx through the mempool
-                    print("Spend successfully submitted. Waiting for mempool")
+                    print("Spend successfully submitted. Waiting for confirmation")
                     tx_confirmed = await self.monitor_mempool(final_sb)
                     if tx_confirmed:
                         return final_sb
@@ -435,7 +435,10 @@ class Minter:
             ]
             if create_sell_offer:
                 await self.create_offer(launcher_ids, create_sell_offer)
-            print("Spendbundle {} Complete".format(sb_index + i))
+            print("Spendbundle {} Confirmed".format(sb_index + i))
+            bs = await self.node_client.get_blockchain_state()
+            mempool_pc = bs["mempool_cost"] / bs["mempool_max_total_cost"]
+            print("Mempool utilization: {:.0%}".format(mempool_pc))
 
 
 def read_metadata_csv(
