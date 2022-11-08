@@ -416,11 +416,15 @@ class Minter:
         )
         for i, sb in enumerate(spend_bundles[sb_index:]):
             final_sb = await self.submit_spend(i, sb, fee_coin)
-            fee_coin = [
+
+            fee_coin_list = [
                 coin
                 for coin in final_sb.additions()
                 if coin.parent_coin_info == fee_coin.name()
-            ][0]
+            ]
+            if fee_coin_list:
+                fee_coin = fee_coin_list[0]
+
             launcher_ids = [
                 coin.name().hex()
                 for coin in sb.removals()
