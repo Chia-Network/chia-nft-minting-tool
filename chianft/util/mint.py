@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import csv
-import time
+
+# import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.rpc.full_node_rpc_client import FullNodeRpcClient
 from chia.rpc.wallet_rpc_client import WalletRpcClient
 from chia.types.blockchain_format.coin import Coin
@@ -82,18 +84,6 @@ class Minter:
             )
         return coins[0]
 
-    async def wait_for_mempool(self, sb_cost: uint64) -> uint64:
-        while True:
-            fee_est = await self.node_client.get_fee_estimate([1], sb_cost)
-            mempool_max_size = fee_est["mempool_max_size"]
-            mempool_size = fee_est["mempool_size"]
-            fee_per_cost = fee_est["current_fee_rate"]
-            if mempool_size + sb_cost < mempool_max_size:
-                return fee_per_cost
-            else:
-                print("mempool is full, waiting 20s")
-                await asyncio.sleep(20)
-
     async def get_tx_from_mempool(
         self, sb_name: bytes32
     ) -> Tuple[bool, Optional[bytes32]]:
@@ -103,13 +93,28 @@ class Minter:
                 return True, item[0]
         return False, None
 
-    async def wait_tx_confirmed(self, tx_id: bytes32) -> bool:
-        while True:
-            item = await self.node_client.get_mempool_item_by_tx_id(tx_id)  # type: ignore
-            if item is None:
-                return True
-            else:
-                await asyncio.sleep(1)
+    # async def tx_confirmed(self, sb: SpendBundle) -> bool:
+    #     state = await self.node_client.get_blockchain_state()
+    #     breakpoint()
+
+    # async def wait_tx_confirmed(self, tx_id: bytes32, sb: SpendBundle) -> bool:
+    #     print("Waiting for transaction to be confirmed")
+    #     # await self.tx_confirmed(sb)
+    #     state = await self.node_client.get_blockchain_state()
+    #     last_header_hash = state["peak"].header_hash
+    #     while True:
+    #         state = await self.node_client.get_blockchain_state()
+    #         next_header_hash = state["peak"].header_hash
+    #         if next_header_hash != last_header_hash:
+    #             print("Blocked - checking for item in mempool")
+    #             item = await self.node_client.get_mempool_item_by_tx_id(tx_id)  # type: ignore
+    #             if item is None:
+    #                 # tx is no longer in mempool. Need to check if it's been confirmed or kicked.
+    #                 print("TX has exited mempool")
+    #                 return True
+    #         else:
+    #             last_header_hash = next_header_hash
+    #             await asyncio.sleep(1)
 
     async def create_spend_bundles(
         self,
@@ -188,29 +193,202 @@ class Minter:
                 did_coin_dict = did_coin.to_json_dict()
         return spend_bundles
 
-    def spend_bundle_cost(self, sb: SpendBundle) -> uint64:
+    def spend_cost(self, spend_bundle: SpendBundle) -> int:
         sb_cost = 0
-        for spend in sb.coin_spends:
-            cost, _ = spend.puzzle_reveal.to_program().run_with_cost(
-                INFINITE_COST,
-                spend.solution.to_program(),
-            )
+        for spend in spend_bundle.coin_spends:
+            cost, _ = spend.puzzle_reveal.run_with_cost(INFINITE_COST, spend.solution)
             sb_cost += cost
-        return uint64(sb_cost)
+        return sb_cost
 
-    async def sb_list(self, spend_bundles: List[SpendBundle]) -> None:
-        current_did = bytes32.from_hexstr(
-            "0x80ebdfe9bba44b0a23e7543ae5bd7f0c80fa2f29a6a3ec664d0de49aaaa5110b"
+    async def is_mempool_full(self, sb_cost: int) -> bool:
+        mempool_items: Dict = await self.node_client.get_all_mempool_items()
+        costs = 0
+        for key, val in mempool_items.items():
+            costs += val["cost"]
+        if costs + sb_cost >= DEFAULT_CONSTANTS.MAX_BLOCK_COST_CLVM:
+            return True
+        return False
+
+    async def add_fee_to_spend(
+        self,
+        spend: SpendBundle,
+        fee_coin: Coin,
+        attempt: int,
+    ) -> Tuple[SpendBundle, int]:
+        mempool_items: Dict = await self.node_client.get_all_mempool_items()
+        costs = []
+        fees = []
+        fee_per_costs = []
+        for key, val in mempool_items.items():
+            costs.append(val["cost"])
+            fees.append(val["fee"])
+            if val["cost"] > 0:
+                fee_per_costs.append(val["fee"] / val["cost"])
+        sb_cost = self.spend_cost(spend)
+        if await self.is_mempool_full(sb_cost):
+            fee_to_replace = min(fee_per_costs)
+            if fee_to_replace < 5:
+                fee_per_cost = 5
+            else:
+                fee_per_cost = int(fee_to_replace) + 5
+        else:
+            # No fee required
+            return spend, 0
+        total_fee = sb_cost * (fee_per_cost * attempt)
+        print("Fee for inclusion: {}".format(total_fee))
+        fee_tx = await self.wallet_client.create_signed_transaction(  # type: ignore
+            additions=[
+                {
+                    "amount": fee_coin.amount - total_fee,
+                    "puzzle_hash": fee_coin.puzzle_hash,
+                }
+            ],
+            coins=[fee_coin],
+            fee=uint64(total_fee),
         )
-        for i, sb in enumerate(spend_bundles):
-            did_list = [coin for coin in sb.additions() if coin.name() == current_did]
-            if did_list:
-                coins = []
-                with open("coin_ids.txt", "w") as f:
-                    for coin in sb.additions():
-                        coins.append(coin)
-                        f.write("{}\n".format(coin.name().hex()))
+        spend_with_fee = SpendBundle.aggregate([fee_tx.spend_bundle, spend])
+        return spend_with_fee, total_fee
+
+    async def sb_in_mempool(self, sb_name: bytes32) -> bool:
+        mempool_items = await self.node_client.get_all_mempool_items()  # type: ignore
+        for item in mempool_items.items():
+            if bytes32(hexstr_to_bytes(item[1]["spend_bundle_name"])) == sb_name:
+                return True
+        return False
+
+    async def tx_confirmed(self, sb: SpendBundle) -> bool:
+        # grab the NFT coins from the spend and check if they are visible to the node_client
+        # we can't check against wallet client b/c they might be transferred during the mint spend
+        removal_ids = [coin.name() for coin in sb.removals() if coin.amount == 0]
+        nft_list = [
+            coin
+            for coin in sb.additions()
+            if coin.amount == 1 and coin.parent_coin_info in removal_ids
+        ]
+        confirmed_nfts = 0
+        for nft in nft_list:
+            # Retry up to 10 times to find NFTs on node
+            for j in range(10):
+                record = await self.node_client.get_coin_record_by_name(nft.name())
+                if not record:
+                    await asyncio.sleep(1)
+                    continue
+                else:
+                    confirmed_nfts += 1
+                    break
+        if confirmed_nfts == len(nft_list):
+            return True
+        else:
+            print(
+                "Only found {} of {} confirmed nfts".format(
+                    confirmed_nfts, len(nft_list)
+                )
+            )
+            return False
+
+    async def monitor_mempool(self, sb: SpendBundle) -> bool:
+        while True:
+            # make sure we find the spend in mempool before going on to check
+            is_in = await self.sb_in_mempool(sb.name())
+            if is_in:
                 break
+        while True:
+            if await self.sb_in_mempool(sb.name()):
+                # Tx is still in mempool so keep waiting
+                await asyncio.sleep(5)
+                continue
+            elif await self.tx_confirmed(sb):
+                # Tx has exited mempool and tx is confirmed so return
+                return True
+            else:
+                # Tx has exited mempool but is not confirmed
+
+                return False
+
+    async def submit_spend(
+        self, i: int, sb: SpendBundle, fee_coin: Coin
+    ) -> SpendBundle:
+        max_retries = 10
+        total_fee = 0
+        for j in range(max_retries):
+            final_sb, total_fee = await self.add_fee_to_spend(sb, fee_coin, j + 1)
+            print("Submitting SB: {}".format(final_sb.name()))
+            try:
+                resp = await self.node_client.push_tx(final_sb)
+                if resp["success"]:
+                    # Monitor the progress of tx through the mempool
+                    print("Spend successfully submited. Waiting for mempool")
+                    tx_confirmed = await self.monitor_mempool(final_sb)
+                    if tx_confirmed:
+                        return final_sb
+                    else:
+                        print(
+                            "Spend was kicked from mempool. Retrying {} of {}".format(
+                                j, max_retries
+                            )
+                        )
+                        continue
+            except ValueError as err:
+                error_msg = err.args[0]["error"]
+                if "DOUBLE_SPEND" in error_msg:
+                    print("SpendBundle was already submitted, skipping")
+                    break
+                print(error_msg)
+                print("retrying in 20 seconds")
+                await asyncio.sleep(20)
+
+        raise ValueError("Submit spend failed. Wait for a few blocks and retry")
+
+    async def get_unspent_spend_bundle(
+        self, spend_bundles: List[SpendBundle]
+    ) -> Tuple[Coin, int]:
+        for i, sb in enumerate(spend_bundles):
+            xch_coin_to_spend = [coin for coin in sb.removals() if coin.amount > 1][0]
+            coin_record = await self.node_client.get_coin_record_by_name(
+                xch_coin_to_spend.name()
+            )
+            assert isinstance(coin_record, CoinRecord)
+            if coin_record.spent_block_index == 0:
+                starting_spend_index: int = i
+                return xch_coin_to_spend, starting_spend_index
+        else:
+            raise ValueError("All spend bundles have been spent")
+
+    async def create_offer(
+        self, launcher_ids: List[str], create_sell_offer: int
+    ) -> None:
+        assert isinstance(self.wallet_client, WalletRpcClient)
+        for launcher_id in launcher_ids:
+            offer_dict = {
+                launcher_id: -1,
+                self.xch_wallet_id: int(create_sell_offer),
+            }
+            for i in range(10):
+                try:
+                    offer, tr = await self.wallet_client.create_offer_for_ids(
+                        offer_dict, fee=0
+                    )
+                    filepath = "offers/{}.offer".format(launcher_id)
+                    assert isinstance(offer, Offer)
+                    with open(Path(filepath), "w") as file:
+                        file.write(offer.to_bech32())
+                    break
+                except ValueError as err:
+                    print(err)
+                    print("Retrying offer creation in 5 seconds")
+                    await asyncio.sleep(5)
+                    continue
+        return
+
+    async def coin_in_mempool(self, funding_coin: Coin) -> Optional[SpendBundle]:
+        # the raw spend bundle won't be included in mempool if it has fee added, so we have to check
+        # for matching funding coin name in the parent ids of the additions
+        mempool_items = await self.node_client.get_all_mempool_items()  # type: ignore
+        for item in mempool_items.items():
+            for coin in item[1]["additions"]:
+                if bytes32.from_hexstr(coin["parent_coin_info"]) == funding_coin.name():
+                    return SpendBundle.from_json_dict(item[1]["spend_bundle"])
+        return None
 
     async def submit_spend_bundles(
         self,
@@ -219,205 +397,51 @@ class Minter:
         create_sell_offer: Optional[int] = None,
     ) -> None:
         await self.get_wallet_ids()
-        # Get first unspent spendbundle so we can restart efficiently
-        for i, sb in enumerate(spend_bundles):
-            xch_coin_to_spend = [coin for coin in sb.removals() if coin.amount > 1][0]
-            coin_record = await self.node_client.get_coin_record_by_name(
-                xch_coin_to_spend.name()
-            )
-            assert isinstance(coin_record, CoinRecord)
-            if coin_record.spent_block_index == 0:
-                starting_spend_index = i
-                if starting_spend_index > 0:
-                    print(
-                        "Restarting submit from spend bundle: {}".format(
-                            starting_spend_index
-                        )
-                    )
-                break
-        else:
-            raise ValueError("All spend bundles have been spent")
+        funding_coin, sb_index = await self.get_unspent_spend_bundle(spend_bundles)
+        if sb_index > 0:
+            print("Resuming from spend bundle: {}".format(sb_index))
 
-        # make sure we have a dir for offers if needed
+        # setup a directory for offers if needed
         if create_sell_offer:
             Path("offers").mkdir(parents=True, exist_ok=True)
 
         # select a coin to use for fees
-        # coin size is based on fee_per_cost = 5, assuming all sbs are same size as sb[0]
-        assert isinstance(fee, int)
-        estimated_fee = (
-            self.spend_bundle_cost(spend_bundles[0]) * 5 * len(spend_bundles)
+        estimated_max_fee = len(spend_bundles) * self.spend_cost(spend_bundles[0]) * 5
+        fee_coin = (
+            await self.wallet_client.select_coins(  # type: ignore
+                amount=estimated_max_fee,
+                wallet_id=self.xch_wallet_id,
+                excluded_coins=[funding_coin],
+            )
+        )[0]
+
+        # check current sb is not in mempool, and if it is wait for it to confirm and adjust sb_index
+        last_sb = await self.coin_in_mempool(funding_coin)
+        if last_sb:
+            print("Previous tx is not yet confirmed. Wait a few blocks and restart")
+            return None
+
+        # Loop through the unspent bundles and try to submit them
+        print(
+            "Submitting a total of {} spend bundles".format(
+                len(spend_bundles[sb_index:])
+            )
         )
-        # total_fee_to_pay = len(spend_bundles) * fee
-        # if total_fee_to_pay > 0:
-        fee_coins = await self.wallet_client.select_coins(  # type: ignore
-            amount=estimated_fee,
-            wallet_id=self.xch_wallet_id,
-            excluded_coins=[xch_coin_to_spend],
-        )
-        fee_coin = fee_coins[0]
-
-        ####
-        # Get another coin for dusting
-        dust_amt = uint64(100000000)
-        dust_fee = uint64(100000)
-        coins = await self.wallet_client.select_coins(
-            amount=dust_amt,
-            wallet_id=self.xch_wallet_id,
-            excluded_coins=[xch_coin_to_spend, fee_coin],
-        )
-        duster_coin = coins[0]
-        dust_tx = await self.wallet_client.create_signed_transaction(
-            additions=[
-                {
-                    "amount": duster_coin.amount - dust_fee,
-                    "puzzle_hash": duster_coin.puzzle_hash,
-                }
-            ],
-            coins=[duster_coin],
-            fee=dust_fee,
-        )
-
-        dust_cost = self.spend_bundle_cost(dust_tx.spend_bundle)
-        fee_est = await self.node_client.get_fee_estimate([1], dust_cost)
-
-        ####
-
-        offer_time: float = 0.0
-        # start submit loop
-        for i, sb in enumerate(spend_bundles[starting_spend_index:]):
-            # nfts_in_sb_count = len(sb.additions()) - len(sb.removals())
-            start = time.monotonic()
-            # TODO: Add dynamic fee estimation
-            assert isinstance(fee, int)
-            fee_time_start = time.monotonic()
-
-            # Get SB cost and check if we fit in mempool
-            sb_cost = self.spend_bundle_cost(sb)
-            fee_est = await self.node_client.get_fee_estimate([1], sb_cost)
-            if fee_est["mempool_size"] + sb_cost >= fee_est["mempool_max_size"]:
-                fee_per_cost: uint64 = await self.wait_for_mempool(sb_cost)
-            else:
-                fee_per_cost = uint64(fee_est["current_fee_rate"])
-            total_fee = sb_cost * fee_per_cost
-
-            # Create a tx for the fee and add to the spend bundle
-            if fee_per_cost > 0:
-                fee_tx = await self.wallet_client.create_signed_transaction(  # type: ignore
-                    additions=[
-                        {
-                            "amount": fee_coin.amount - fee,
-                            "puzzle_hash": fee_coin.puzzle_hash,
-                        }
-                    ],
-                    coins=[fee_coin],
-                    fee=uint64(total_fee),
-                )
-                final_sb = SpendBundle.aggregate([fee_tx.spend_bundle, sb])
-                # Setup the next fee coin for the next spend bundle
-                fee_coin = [
-                    coin
-                    for coin in final_sb.additions()
-                    if coin.parent_coin_info == fee_coin.name()
-                ][0]
-            else:
-                final_sb = sb
-
-            fee_time_end = time.monotonic()
-
-            # Keep the launcher coins for creating offers
+        for i, sb in enumerate(spend_bundles[sb_index:]):
+            final_sb = await self.submit_spend(i, sb, fee_coin)
+            fee_coin = [
+                coin
+                for coin in final_sb.additions()
+                if coin.parent_coin_info == fee_coin.name()
+            ][0]
             launcher_ids = [
                 coin.name().hex()
                 for coin in sb.removals()
                 if coin.puzzle_hash == LAUNCHER_PUZZLE_HASH
             ]
-
-            # Submit the final spend bundle
-            tx_time_start = time.monotonic()
-            try:
-
-                resp = await self.node_client.push_tx(final_sb)
-                assert resp["success"]
-            except ValueError as err:
-                # if the spend was already submitted, skip to the next one
-                # Need this in case user stops and restarts submitting before the last tx is confirmed
-                if "DOUBLE_SPEND" in err.args[0]["error"]:
-                    print("SpendBundle was already submitted, skipping")
-                    continue
-                elif "INVALID_FEE_TOO_CLOSE_TO_ZERO" in err.args[0]["error"]:
-                    print(
-                        "A higher fee than {} mojo is needed for inclusion into mempool.".format(
-                            fee
-                        )
-                    )
-                else:
-                    print(err)
-                    return
-
-            # use a timer in case restart happens between tx in mempool and confirmation
-            exception_timer = 10
-            while True:
-                in_mempool, tx_id = await self.get_tx_from_mempool(final_sb.name())
-                if in_mempool:
-                    break
-                elif exception_timer > 0:
-                    await asyncio.sleep(1)
-                    exception_timer -= 1
-                elif exception_timer == 0:
-                    raise ValueError(
-                        "Couldn't find tx in mempool after 10 seconds. Retry in a minute"
-                    )
-
-            # Wait until the TX is confirmed
-            assert isinstance(tx_id, bytes32)
-            await self.wait_tx_confirmed(tx_id)
-            tx_time_end = time.monotonic()
-
-            # Need to wait for the NFT wallet to catch up.
-            # If offer creation is running slow, add an extra 20s wait
-            if i > 0 and offer_time > 30:
-                await asyncio.sleep(30)
-            else:
-                await asyncio.sleep(10)
-
             if create_sell_offer:
-                offer_time_start = time.monotonic()
-                assert isinstance(self.wallet_client, WalletRpcClient)
-                for launcher_id in launcher_ids:
-                    offer_dict = {
-                        launcher_id: -1,
-                        self.xch_wallet_id: int(create_sell_offer),
-                    }
-                    try:
-                        offer, tr = await self.wallet_client.create_offer_for_ids(
-                            offer_dict, fee=0
-                        )
-                    except ValueError as err:
-                        print("Failed to include offer for NFT: {}".format(launcher_id))
-                        print("Effor creating offer: {}".format(err))
-                        await asyncio.sleep(5)
-                        continue
-                    filepath = "offers/{}.offer".format(launcher_id)
-                    assert isinstance(offer, Offer)
-                    with open(Path(filepath), "w") as file:
-                        file.write(offer.to_bech32())
-                offer_time_end = time.monotonic()
-                offer_time = offer_time_end - offer_time_start
-
-            end = time.monotonic()
-            tx_time = tx_time_end - tx_time_start
-            fee_time = fee_time_end - fee_time_start
-            total_time = end - start
-            print(
-                "SUBMITTED: {}/{}\tTX: {:.2f}s\tFEE: {:.2f}s\tOFFER: {:.2f}s\tTOTAL: {:.2f}s".format(
-                    i + starting_spend_index + 1,
-                    len(spend_bundles),
-                    tx_time,
-                    fee_time,
-                    offer_time,
-                    total_time,
-                )
-            )
+                await self.create_offer(launcher_ids, create_sell_offer)
+            print("Spendbundle {} Complete".format(sb_index + i))
 
 
 def read_metadata_csv(
