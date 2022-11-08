@@ -201,27 +201,31 @@ class Minter:
         spend: SpendBundle,
         fee_coin: Coin,
         attempt: int,
+        max_fee: Optional[int],
     ) -> Tuple[SpendBundle, int]:
-        mempool_items: Dict = await self.node_client.get_all_mempool_items()
-        costs = []
-        fees = []
-        fee_per_costs = []
-        for key, val in mempool_items.items():
-            costs.append(val["cost"])
-            fees.append(val["fee"])
-            if val["cost"] > 0:
-                fee_per_costs.append(val["fee"] / val["cost"])
-        sb_cost = self.spend_cost(spend)
-        if await self.is_mempool_full(sb_cost):
-            fee_to_replace = min(fee_per_costs)
-            if fee_to_replace < 5:
-                fee_per_cost = 5
-            else:
-                fee_per_cost = int(fee_to_replace) + 5
+        if max_fee:
+            total_fee = max_fee
         else:
-            # No fee required
-            return spend, 0
-        total_fee = sb_cost * (fee_per_cost * attempt)
+            mempool_items: Dict = await self.node_client.get_all_mempool_items()
+            costs = []
+            fees = []
+            fee_per_costs = []
+            for key, val in mempool_items.items():
+                costs.append(val["cost"])
+                fees.append(val["fee"])
+                if val["cost"] > 0:
+                    fee_per_costs.append(val["fee"] / val["cost"])
+            sb_cost = self.spend_cost(spend)
+            if await self.is_mempool_full(sb_cost):
+                fee_to_replace = min(fee_per_costs)
+                if fee_to_replace < 5:
+                    fee_per_cost = 5
+                else:
+                    fee_per_cost = int(fee_to_replace) + 5
+            else:
+                # No fee required
+                return spend, 0
+            total_fee = sb_cost * (fee_per_cost * attempt)
         print("Fee for inclusion: {}".format(total_fee))
         fee_tx = await self.wallet_client.create_signed_transaction(  # type: ignore
             additions=[
@@ -293,12 +297,18 @@ class Minter:
                 return False
 
     async def submit_spend(
-        self, i: int, sb: SpendBundle, fee_coin: Coin
+        self,
+        i: int,
+        sb: SpendBundle,
+        fee_coin: Coin,
+        max_fee: Optional[int],
     ) -> SpendBundle:
         max_retries = 10
         total_fee = 0
         for j in range(max_retries):
-            final_sb, total_fee = await self.add_fee_to_spend(sb, fee_coin, j + 1)
+            final_sb, total_fee = await self.add_fee_to_spend(
+                sb, fee_coin, j + 1, max_fee
+            )
             print("Submitting SB: {}".format(final_sb.name()))
             try:
                 resp = await self.node_client.push_tx(final_sb)
@@ -380,7 +390,7 @@ class Minter:
     async def submit_spend_bundles(
         self,
         spend_bundles: List[SpendBundle],
-        fee: Optional[int] = 0,
+        fee: Optional[int] = None,
         create_sell_offer: Optional[int] = None,
     ) -> None:
         await self.get_wallet_ids()
@@ -415,7 +425,7 @@ class Minter:
             )
         )
         for i, sb in enumerate(spend_bundles[sb_index:]):
-            final_sb = await self.submit_spend(i, sb, fee_coin)
+            final_sb = await self.submit_spend(i, sb, fee_coin, fee)
 
             fee_coin_list = [
                 coin
