@@ -302,7 +302,7 @@ class Minter:
                 resp = await self.node_client.push_tx(final_sb)
                 if resp["success"]:
                     # Monitor the progress of tx through the mempool
-                    print("Spend successfully submited. Waiting for mempool")
+                    print("Spend successfully submitted. Waiting for mempool")
                     tx_confirmed = await self.monitor_mempool(final_sb)
                     if tx_confirmed:
                         return final_sb
