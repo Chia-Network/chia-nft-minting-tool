@@ -19,16 +19,16 @@ from chia.wallet.util.wallet_types import WalletType
 
 class Minter:
     def __init__(
-        self,
-        wallet_client: WalletRpcClient,
-        node_client: FullNodeRpcClient,
+            self,
+            wallet_client: WalletRpcClient,
+            node_client: FullNodeRpcClient,
     ) -> None:
         self.wallet_client = wallet_client
         self.node_client = node_client
 
     async def get_wallet_ids(
-        self,
-        nft_wallet_id: Optional[int] = None,
+            self,
+            nft_wallet_id: Optional[int] = None,
     ) -> None:
         nft_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.NFT)
         if nft_wallet_id is not None:
@@ -80,7 +80,7 @@ class Minter:
         return coins[0]
 
     async def get_tx_from_mempool(
-        self, sb_name: bytes32
+            self, sb_name: bytes32
     ) -> Tuple[bool, Optional[bytes32]]:
         mempool_items = await self.node_client.get_all_mempool_items()  # type: ignore
         for item in mempool_items.items():
@@ -97,15 +97,15 @@ class Minter:
                 await asyncio.sleep(1)
 
     async def create_spend_bundles(
-        self,
-        metadata_input: Path,
-        bundle_output: Path,
-        wallet_id: int,
-        mint_from_did: Optional[bool] = False,
-        royalty_address: Optional[str] = "",
-        royalty_percentage: Optional[int] = 0,
-        has_targets: Optional[bool] = True,
-        chunk: Optional[int] = 25,
+            self,
+            metadata_input: Path,
+            bundle_output: Path,
+            wallet_id: int,
+            mint_from_did: Optional[bool] = False,
+            royalty_address: Optional[str] = "",
+            royalty_percentage: Optional[int] = 0,
+            has_targets: Optional[bool] = True,
+            chunk: Optional[int] = 25,
     ) -> List[bytes]:
         await self.get_wallet_ids(wallet_id)
         metadata_list, target_list = read_metadata_csv(
@@ -136,8 +136,8 @@ class Minter:
         for i in range(0, mint_total, chunk):
             resp = await self.wallet_client.nft_mint_bulk(
                 wallet_id=self.nft_wallet_id,
-                metadata_list=metadata_list[i : i + chunk],
-                target_list=target_list[i : i + chunk],
+                metadata_list=metadata_list[i: i + chunk],
+                target_list=target_list[i: i + chunk],
                 royalty_percentage=royalty_percentage,
                 royalty_address=royalty_address,
                 mint_number_start=i + 1,
@@ -167,17 +167,18 @@ class Minter:
                     c
                     for c in sb.additions()
                     if (c.parent_coin_info == did_coin.name())
-                    and (c.amount == did_coin.amount)
+                       and (c.amount == did_coin.amount)
                 ][0]
                 assert isinstance(did_coin, Coin)
                 did_coin_dict = did_coin.to_json_dict()
         return spend_bundles
 
     async def submit_spend_bundles(
-        self,
-        spend_bundles: List[SpendBundle],
-        fee: Optional[int] = 0,
-        create_sell_offer: Optional[int] = None,
+            self,
+            spend_bundles: List[SpendBundle],
+            fee: Optional[int] = 0,
+            create_sell_offer: Optional[int] = None,
+            list_coins: Optional[str] = None,
     ) -> None:
         await self.get_wallet_ids()
         # Get first unspent spendbundle so we can restart efficiently
@@ -202,6 +203,8 @@ class Minter:
         # make sure we have a dir for offers if needed
         if create_sell_offer:
             Path("offers").mkdir(parents=True, exist_ok=True)
+        if list_coins:
+            Path("coins_list").mkdir(parents=True, exist_ok=True)
 
         # select a coin to use for fees
         assert isinstance(fee, int)
@@ -324,6 +327,11 @@ class Minter:
                 offer_time_end = time.monotonic()
                 offer_time = offer_time_end - offer_time_start
 
+            if list_coins:
+                id_file = open(Path("coins_list/" + list_coins), "a+")
+                for launcher_id in launcher_ids:
+                    id_file.write(launcher_id + "\n")
+
             end = time.monotonic()
             tx_time = tx_time_end - tx_time_start
             fee_time = fee_time_end - fee_time_start
@@ -341,9 +349,9 @@ class Minter:
 
 
 def read_metadata_csv(
-    file_path: Path,
-    has_header: Optional[bool] = False,
-    has_targets: Optional[bool] = False,
+        file_path: Path,
+        has_header: Optional[bool] = False,
+        has_targets: Optional[bool] = False,
 ) -> Tuple[List[Dict[str, Any]], List[str]]:
     with open(file_path, "r") as f:
         csv_reader = csv.reader(f)

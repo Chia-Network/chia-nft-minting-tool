@@ -166,6 +166,12 @@ def create_spend_bundles_cmd(
     help="Create an offer for each created NFT at the specified price.",
 )
 @click.option(
+    "-lc",
+    "--list-coins",
+    required=False,
+    help="Writes NFT launcher coins to a file",
+)
+@click.option(
     "-wp",
     "--wallet-rpc-port",
     help="Set the port where the Wallet is hosting the RPC interface. See the rpc_port under wallet in config.yaml",
@@ -193,6 +199,7 @@ def submit_spend_bundles_cmd(
     wallet_rpc_port: Optional[int] = None,
     fingerprint: Optional[int] = None,
     node_rpc_port: Optional[int] = None,
+    list_coins: Optional[str] = None,
 ) -> None:
     """
     \b
@@ -214,7 +221,7 @@ def submit_spend_bundles_cmd(
             minter = Minter(wallet_client, node_client)
             # await minter.get_wallet_ids()
             await minter.submit_spend_bundles(
-                spends, int(fee), create_sell_offer=create_sell_offer
+                spends, int(fee), create_sell_offer=create_sell_offer, list_coins=list_coins
             )
 
         finally:
