@@ -228,34 +228,6 @@ def submit_spend_bundles_cmd(
     asyncio.get_event_loop().run_until_complete(do_command())
 
 
-@cli.command("test", short_help="Tester")
-def mempool_monitor() -> None:
-    async def do_command():
-        node_rpc_port = None
-        wallet_rpc_port = None
-        fingerprint = None
-        node_client, wallet_client = await get_node_and_wallet_clients(
-            node_rpc_port, wallet_rpc_port, fingerprint
-        )
-        try:
-            spends = []
-            with open("nft_spends.pkl", "rb") as f:
-                spends_bytes = pickle.load(f)
-            for spend_bytes in spends_bytes:
-                spends.append(SpendBundle.from_bytes(spend_bytes))
-
-            minter = Minter(wallet_client, node_client)
-            await minter.sb_list(spends)
-
-        finally:
-            node_client.close()
-            wallet_client.close()
-            await node_client.await_closed()
-            await wallet_client.await_closed()
-
-    asyncio.get_event_loop().run_until_complete(do_command())
-
-
 def main() -> None:
     monkey_patch_click()
     asyncio.run(cli())  # pylint: disable=no-value-for-parameter
