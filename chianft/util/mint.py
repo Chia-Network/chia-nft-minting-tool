@@ -403,7 +403,12 @@ class Minter:
             Path("offers").mkdir(parents=True, exist_ok=True)
 
         # select a coin to use for fees
-        estimated_max_fee = len(spend_bundles) * self.spend_cost(spend_bundles[0]) * 5
+        if fee:
+            estimated_max_fee = len(spend_bundles) * fee
+        else:
+            estimated_max_fee = (
+                len(spend_bundles) * self.spend_cost(spend_bundles[0]) * 5
+            )
         fee_coin = (
             await self.wallet_client.select_coins(  # type: ignore
                 amount=estimated_max_fee,
