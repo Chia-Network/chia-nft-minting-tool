@@ -136,8 +136,8 @@ class Minter:
         for i in range(0, mint_total, chunk):
             '''
             The following 4 lines parses the metadata list and splits any comma seperated
-            uri fields into a list of uris before passing to the chia client  
-            ie. 
+            uri fields into a list of uris before passing to the chia client
+            ie.
             ["uri1,uri2,uri3"]
             becomes
             ["uri1","uri2","uri3"]
