@@ -47,7 +47,7 @@ async def main(count: int, has_targets: bool) -> None:
     coros = [create_nft_sample(has_targets) for _ in range(count)]
     data = await asyncio.gather(*coros)
     with open("metadata.csv", "w") as f:
-        writer = csv.writer(f)
+        writer = csv.writer(f, delimiter=';')
         writer.writerows([header] + data)
 
     royalty_address = encode_puzzle_hash(bytes32(token_bytes(32)), "txch")

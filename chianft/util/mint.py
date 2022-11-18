@@ -134,6 +134,18 @@ class Minter:
         assert isinstance(royalty_percentage, int)
         assert isinstance(royalty_address, str)
         for i in range(0, mint_total, chunk):
+            '''
+            The following 4 lines parses the metadata list and splits any comma seperated
+            uri fields into a list of uris before passing to the chia client  
+            ie. 
+            ["uri1,uri2,uri3"]
+            becomes
+            ["uri1","uri2","uri3"]
+            '''
+            for meta_items in metadata_list[i : i + chunk]:
+                meta_items['meta_uris'] = meta_items['meta_uris'][0].split(',')
+                meta_items['uris'] = meta_items['uris'][0].split(',')
+                meta_items['license_uris'] = meta_items['license_uris'][0].split(',')
             resp = await self.wallet_client.nft_mint_bulk(
                 wallet_id=self.nft_wallet_id,
                 metadata_list=metadata_list[i : i + chunk],
@@ -346,7 +358,7 @@ def read_metadata_csv(
     has_targets: Optional[bool] = False,
 ) -> Tuple[List[Dict[str, Any]], List[str]]:
     with open(file_path, "r") as f:
-        csv_reader = csv.reader(f)
+        csv_reader = csv.reader(f , delimiter=';')
         bulk_data = list(csv_reader)
     metadata_list: List[Dict[str, Any]] = []
     if has_header:
