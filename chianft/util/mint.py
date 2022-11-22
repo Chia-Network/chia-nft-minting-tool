@@ -136,8 +136,8 @@ class Minter:
         for i in range(0, mint_total, chunk):
             resp = await self.wallet_client.nft_mint_bulk(
                 wallet_id=self.nft_wallet_id,
-                metadata_list=metadata_list[i : i + chunk],
-                target_list=target_list[i : i + chunk],
+                metadata_list=metadata_list[i:i + chunk],
+                target_list=target_list[i:i + chunk],
                 royalty_percentage=royalty_percentage,
                 royalty_address=royalty_address,
                 mint_number_start=i + 1,
@@ -178,6 +178,7 @@ class Minter:
         spend_bundles: List[SpendBundle],
         fee: Optional[int] = 0,
         create_sell_offer: Optional[int] = None,
+        list_coins: Optional[str] = None,
     ) -> None:
         await self.get_wallet_ids()
         # Get first unspent spendbundle so we can restart efficiently
@@ -202,6 +203,8 @@ class Minter:
         # make sure we have a dir for offers if needed
         if create_sell_offer:
             Path("offers").mkdir(parents=True, exist_ok=True)
+        if list_coins:
+            Path("coins_list").mkdir(parents=True, exist_ok=True)
 
         # select a coin to use for fees
         assert isinstance(fee, int)
@@ -323,6 +326,11 @@ class Minter:
                         file.write(offer.to_bech32())
                 offer_time_end = time.monotonic()
                 offer_time = offer_time_end - offer_time_start
+
+            if list_coins:
+                id_file = open(Path("coins_list/" + list_coins), "a+")
+                for launcher_id in launcher_ids:
+                    id_file.write(launcher_id + "\n")
 
             end = time.monotonic()
             tx_time = tx_time_end - tx_time_start
