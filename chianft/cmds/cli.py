@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import pickle
 from pathlib import Path
 from typing import Optional
@@ -10,12 +9,8 @@ import click
 from chia.types.spend_bundle import SpendBundle
 
 from chianft import __version__
+from chianft.util.clients import get_node_and_wallet_clients
 from chianft.util.mint import Minter
-
-if os.environ.get("TESTING_CIC_CLI", "FALSE") == "TRUE":
-    from tests.cli_clients import get_node_and_wallet_clients
-else:
-    from chianft.util.clients import get_node_and_wallet_clients
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 

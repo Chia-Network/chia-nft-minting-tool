@@ -271,6 +271,11 @@ class Minter:
             is_in = await self.sb_in_mempool(sb.name())
             if is_in:
                 break
+            else:
+                # If testing with the sim autofarming
+                confirmed = await self.tx_confirmed(sb)
+                if confirmed:
+                    break
         while True:
             if await self.sb_in_mempool(sb.name()):
                 # Tx is still in mempool so keep waiting
