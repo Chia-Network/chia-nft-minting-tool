@@ -41,7 +41,7 @@ def create_metadata(filename: str, mint_total: int, has_targets: bool) -> str:
         if has_targets:
             sample.append(encode_puzzle_hash(bytes32(token_bytes(32)), "xch"))
         metadata.append(sample)
-    with open(filename, "w", newline='') as f:
+    with open(filename, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerows([header] + metadata)
     return filename
@@ -98,7 +98,7 @@ def test_mint_from_xch(has_targets):
             [
                 "create-mint-spend-bundles",
                 "--wallet-id",
-                "3",
+                "4",
                 "--mint-from-did",
                 False,
                 "--royalty-address",
