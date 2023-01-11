@@ -1,6 +1,6 @@
-import csv
+from __future__ import annotations
 
-# import traceback
+import csv
 from secrets import token_bytes
 
 import pytest

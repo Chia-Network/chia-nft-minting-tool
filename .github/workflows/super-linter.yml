@@ -22,8 +22,24 @@ jobs:
           fetch-depth: 0
 
       - name: Lint Code Base
-        uses: github/super-linter@v4
+        uses: github/super-linter@v4.9.3
         env:
           VALIDATE_ALL_CODEBASE: false
           DEFAULT_BRANCH: "main"
+          LINTER_RULES_PATH: .
+          MARKDOWN_CONFIG_FILE: .markdown-lint.yml
+          VALIDATE_BASH: true
+          VALIDATE_CSS: true
+          VALIDATE_DOCKER: true
+          VALIDATE_GO: true
+          VALIDATE_HTML: true
+          VALIDATE_JAVASCRIPT_ES: true
+          VALIDATE_JSON: true
+          VALIDATE_MD: true
+          VALIDATE_POWERSHELL: true
+          VALIDATE_SHELL_SHFMT: true
+          VALIDATE_TYPESCRIPT_ES: true
+          VALIDATE_YAML: true
+          DISABLE_ERRORS: false
+          PYTHONPATH: ${{ github.workspace }}:$PYTHONPATH
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
