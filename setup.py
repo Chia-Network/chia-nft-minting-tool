@@ -4,13 +4,15 @@ with open("README.md", "rt", encoding="UTF-8") as fh:
     long_description = fh.read()
 
 dependencies = [
-    "chia-blockchain @ git+https://github.com/Chia-Network/chia-blockchain.git",
+    # "chia-blockchain @ git+https://github.com/Chia-Network/chia-blockchain.git@1.6.2",
+    "chia-blockchain==1.6.2",
     "packaging==21.3",
 ]
 
 dev_dependencies = [
     "build",
-    "click~=8.1",
+    "click~=8.1.3",
+    "chia-dev-tools~=1.1.4",
     "coverage",
     "pre-commit",
     "pylint",
@@ -23,7 +25,7 @@ dev_dependencies = [
     "faker",
     "flake8",
     "mypy",
-    "black==21.12b0",
+    "black==22.10.0",
     "aiohttp_cors",  # For blackd
     "ipython",  # For asyncio debugging
     "pyinstaller==5.0",

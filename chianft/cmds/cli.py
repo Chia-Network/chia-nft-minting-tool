@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import asyncio
-import os
 import pickle
 from pathlib import Path
 from typing import Optional
@@ -8,12 +9,8 @@ import click
 from chia.types.spend_bundle import SpendBundle
 
 from chianft import __version__
+from chianft.util.clients import get_node_and_wallet_clients
 from chianft.util.mint import Minter
-
-if os.environ.get("TESTING_CIC_CLI", "FALSE") == "TRUE":
-    from tests.cli_clients import get_node_and_wallet_clients
-else:
-    from chianft.util.clients import get_node_and_wallet_clients
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -156,8 +153,9 @@ def create_spend_bundles_cmd(
 @click.option(
     "-m",
     "--fee",
+    type=int,
     required=False,
-    help="The fee (in mojos) for each spend bundle (25 NFTs)",
+    help="Optional default fee - all spends will attempt to use this fee. If not given, fees are estimated",
 )
 @click.option(
     "-o",
@@ -188,7 +186,7 @@ def create_spend_bundles_cmd(
 )
 def submit_spend_bundles_cmd(
     bundle_input: Path,
-    fee: Optional[int] = 0,
+    fee: Optional[int] = None,
     create_sell_offer: Optional[int] = None,
     wallet_rpc_port: Optional[int] = None,
     fingerprint: Optional[int] = None,
@@ -212,9 +210,8 @@ def submit_spend_bundles_cmd(
                 spends.append(SpendBundle.from_bytes(spend_bytes))
 
             minter = Minter(wallet_client, node_client)
-            # await minter.get_wallet_ids()
             await minter.submit_spend_bundles(
-                spends, int(fee), create_sell_offer=create_sell_offer
+                spends, fee, create_sell_offer=create_sell_offer
             )
 
         finally:
