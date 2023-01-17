@@ -9,3 +9,4 @@ main.sym
 .coverage
 ,csv
 .pkl
+.idea/*
