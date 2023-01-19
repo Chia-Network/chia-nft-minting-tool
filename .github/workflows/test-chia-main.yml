@@ -1,5 +1,5 @@
 ---
-name: Run Test Suite
+name: Test chia-blockchain main
 
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   build:
-    name: All tests
+    name: All tests @main
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -45,7 +45,7 @@ jobs:
         run: |
           python3 -m venv venv
           . ./venv/bin/activate
-          pip install --extra-index https://pypi.chia.net/simple/ --editable .[release]
+          pip install --extra-index https://pypi.chia.net/simple/ --editable .[dev]
           chia init
           echo -ne "\n" | cdv sim create
           export CHIA_ROOT=~/.chia/simulator/main/

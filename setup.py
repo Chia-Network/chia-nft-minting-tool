@@ -4,15 +4,20 @@ with open("README.md", "rt", encoding="UTF-8") as fh:
     long_description = fh.read()
 
 dependencies = [
-    # "chia-blockchain @ git+https://github.com/Chia-Network/chia-blockchain.git@1.6.2",
-    "chia-blockchain==1.6.2",
     "packaging==21.3",
+    "anyio",
+]
+
+release_dependencies = [
+    "chia-blockchain==1.6.2",
+    "chia-dev-tools~=1.1.4",
 ]
 
 dev_dependencies = [
     "build",
+    "chia-blockchain @ git+https://github.com/Chia-Network/chia-blockchain.git@main",
+    "chia-dev-tools @ git+https://github.com/Chia-Network/chia-dev-tools.git@wallentx/target-main",  # Will change to '@main' if changes get merged to chia-dev-tools
     "click~=8.1.3",
-    "chia-dev-tools~=1.1.4",
     "coverage",
     "pre-commit",
     "pylint",
@@ -69,6 +74,7 @@ setup(
         "Topic :: Security :: Cryptography",
     ],
     extras_require=dict(
+        release=release_dependencies,
         dev=dev_dependencies,
     ),
     project_urls={
