@@ -4,12 +4,12 @@ with open("README.md", "rt", encoding="UTF-8") as fh:
     long_description = fh.read()
 
 dependencies = [
-    "packaging==21.3",
+    "packaging~=23.0",
     "anyio",
 ]
 
 release_dependencies = [
-    "chia-blockchain==1.6.2",
+    "chia-blockchain~=1.7.0",
     "chia-dev-tools~=1.1.4",
 ]
 
