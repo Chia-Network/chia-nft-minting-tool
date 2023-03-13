@@ -50,7 +50,11 @@ jobs:
         shell: bash
         run: |
           python3 -m venv venv
-          . ./venv/bin/activate
+          if [[ ${{ matrix.os.runs-on }} == windows-latest ]]; then
+            source ../venv/Scripts/activate
+          else
+            . ./venv/bin/activate
+          fi
           pip install --extra-index https://pypi.chia.net/simple/ --editable .[dev]
           chia init
           echo -ne "\n" | cdv sim create
