@@ -51,7 +51,7 @@ jobs:
         run: |
           python3 -m venv venv
           if [[ ${{ matrix.os.runs-on }} == windows-latest ]]; then
-            source ../venv/Scripts/activate
+            source ./venv/Scripts/activate || source ./venv/Scripts/Activate.ps1
           else
             . ./venv/bin/activate
           fi
