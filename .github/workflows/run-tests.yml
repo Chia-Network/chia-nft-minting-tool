@@ -18,12 +18,17 @@ concurrency:
 
 jobs:
   build:
+    runs-on: ${{ matrix.os.runs-on }}
     name: All tests
-    runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
-      fail-fast: false
       max-parallel: 4
+      fail-fast: false
+      matrix:
+        os:
+          - runs-on: macos-latest
+          - runs-on: ubuntu-latest
+          - runs-on: windows-latest
 
     steps:
       - name: Checkout Code
@@ -42,9 +47,14 @@ jobs:
           python-version: 3.9
 
       - name: Test code with pytest
+        shell: bash
         run: |
           python3 -m venv venv
-          . ./venv/bin/activate
+          if [[ ${{ matrix.os.runs-on }} == windows-latest ]]; then
+            source ./venv/Scripts/activate
+          else
+            . ./venv/bin/activate
+          fi
           pip install --extra-index https://pypi.chia.net/simple/ --editable .[dev]
           chia init
           echo -ne "\n" | cdv sim create
