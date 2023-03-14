@@ -48,7 +48,7 @@ def create_metadata(filename: str, mint_total: int, has_targets: bool) -> str:
 
 
 @pytest.mark.parametrize("has_targets", [True, False])
-def test_mint_from_did(has_targets):
+def test_mint_from_did(has_targets: bool) -> None:
     mint_total = 10
     chunk_size = 5
 
@@ -63,20 +63,22 @@ def test_mint_from_did(has_targets):
                 "--wallet-id",
                 "3",
                 "--mint-from-did",
-                True,
+                "True",
                 "--royalty-address",
                 encode_puzzle_hash(bytes32(token_bytes(32)), "xch"),
                 "--royalty-percentage",
-                300,
+                "300",
                 "--has-targets",
-                has_targets,
+                str(has_targets),
                 "--chunk",
-                chunk_size,
+                str(chunk_size),
                 input_file,
                 output_file,
             ],
         )
-        result = runner.invoke(cli, ["submit-spend-bundles", "--fee", 10, output_file])
+        result = runner.invoke(
+            cli, ["submit-spend-bundles", "--fee", str(10), output_file]
+        )
 
     # traceback.print_exception(*result.exc_info)
     # breakpoint()
@@ -85,7 +87,7 @@ def test_mint_from_did(has_targets):
 
 
 @pytest.mark.parametrize("has_targets", [True, False])
-def test_mint_from_xch(has_targets):
+def test_mint_from_xch(has_targets: bool) -> None:
     mint_total = 10
     chunk_size = 5
 
@@ -100,21 +102,23 @@ def test_mint_from_xch(has_targets):
                 "--wallet-id",
                 "4",
                 "--mint-from-did",
-                False,
+                "False",
                 "--royalty-address",
                 encode_puzzle_hash(bytes32(token_bytes(32)), "xch"),
                 "--royalty-percentage",
-                300,
+                "300",
                 "--has-targets",
-                has_targets,
+                str(has_targets),
                 "--chunk",
-                chunk_size,
+                str(chunk_size),
                 input_file,
                 output_file,
             ],
         )
 
-        result = runner.invoke(cli, ["submit-spend-bundles", "--fee", 10, output_file])
+        result = runner.invoke(
+            cli, ["submit-spend-bundles", "--fee", "10", output_file]
+        )
 
     # traceback.print_exception(*result.exc_info)
     # breakpoint()
