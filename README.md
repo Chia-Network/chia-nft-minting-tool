@@ -83,7 +83,16 @@ Tests are located in the tests directory. To run them, make sure to install the 
 pip install --extra-index https://pypi.chia.net/simple/ --editable .[dev]
 ```
 
-To run the tests use:
+Then you need to setup the simulator, run the wallet, and create a DID:
+```
+chia init
+cdv sim create
+export CHIA_ROOT=~/.chia/simulator/main/
+chia start wallet
+chia wallet did create
+```
+
+Now, you can run the tests:
 ```bash
 pytest tests/test_mint.py
 ```
