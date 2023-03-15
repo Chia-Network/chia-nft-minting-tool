@@ -47,7 +47,7 @@ class Minter:
             self.did_wallet_id: int = 0
 
             did_id_for_nft = (
-                await self.wallet_client.get_nft_wallet_did(wallet_id=nft_wallet_id)  # type: ignore
+                await self.wallet_client.get_nft_wallet_did(wallet_id=nft_wallet_id)  # type: ignore[no-untyped-call]
             )["did_id"]
             did_wallets = await self.wallet_client.get_wallets(
                 wallet_type=WalletType.DECENTRALIZED_ID
@@ -62,7 +62,7 @@ class Minter:
             self.non_did_nft_wallet_ids = []
             for wallet in nft_wallets:
                 did_id = (
-                    await self.wallet_client.get_nft_wallet_did(wallet_id=wallet["id"])  # type: ignore
+                    await self.wallet_client.get_nft_wallet_did(wallet_id=wallet["id"])  # type: ignore[no-untyped-call]
                 )["did_id"]
                 if did_id is None:
                     self.non_did_nft_wallet_ids.append(wallet["id"])
