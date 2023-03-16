@@ -112,27 +112,34 @@ def create_spend_bundles_cmd(
     wallet_rpc_port: Optional[int] = None,
     fingerprint: Optional[int] = None,
     node_rpc_port: Optional[int] = None,
-):
+) -> None:
     """
     \b
     INPUT is the path of the csv file of NFT matadata to be created
     OUTPUT is the path of the pickle file where spendbundles will be written
     """
 
-    async def do_command():
-        node_client, wallet_client = await get_node_and_wallet_clients(
+    async def do_command() -> None:
+        maybe_clients = await get_node_and_wallet_clients(
             node_rpc_port, wallet_rpc_port, fingerprint
         )
+        if maybe_clients is None:
+            print("Failed to connect to wallet and node")
+            return
+        node_client, wallet_client = maybe_clients
+        if node_client is None or wallet_client is None:
+            print("Failed to connect to wallet and node")
+            return
 
         try:
             minter = Minter(wallet_client, node_client)
             spend_bundles = await minter.create_spend_bundles(
                 metadata_input,
                 bundle_output,
-                int(wallet_id),
+                wallet_id,
                 mint_from_did,
                 royalty_address=royalty_address,
-                royalty_percentage=int(royalty_percentage),
+                royalty_percentage=royalty_percentage,
                 has_targets=has_targets,
                 chunk=chunk,
             )
@@ -197,10 +204,17 @@ def submit_spend_bundles_cmd(
     BUNDLE_INPUT is the path of the saved spend bundles from create-mint-spend-bundles
     """
 
-    async def do_command():
-        node_client, wallet_client = await get_node_and_wallet_clients(
+    async def do_command() -> None:
+        maybe_clients = await get_node_and_wallet_clients(
             node_rpc_port, wallet_rpc_port, fingerprint
         )
+        if maybe_clients is None:
+            print("Failed to connect to wallet and node")
+            return
+        node_client, wallet_client = maybe_clients
+        if node_client is None or wallet_client is None:
+            print("Failed to connect to wallet and node")
+            return
 
         try:
             spends = []

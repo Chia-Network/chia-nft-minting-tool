@@ -12,6 +12,7 @@ from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import INFINITE_COST
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_record import CoinRecord
+from chia.types.mempool_item import MempoolItem
 from chia.types.spend_bundle import SpendBundle
 from chia.util.byte_types import hexstr_to_bytes
 from chia.util.ints import uint64
@@ -46,7 +47,7 @@ class Minter:
             self.did_wallet_id: int = 0
 
             did_id_for_nft = (
-                await self.wallet_client.get_nft_wallet_did(wallet_id=nft_wallet_id)
+                await self.wallet_client.get_nft_wallet_did(wallet_id=nft_wallet_id)  # type: ignore[no-untyped-call]
             )["did_id"]
             did_wallets = await self.wallet_client.get_wallets(
                 wallet_type=WalletType.DECENTRALIZED_ID
@@ -61,7 +62,7 @@ class Minter:
             self.non_did_nft_wallet_ids = []
             for wallet in nft_wallets:
                 did_id = (
-                    await self.wallet_client.get_nft_wallet_did(wallet_id=wallet["id"])
+                    await self.wallet_client.get_nft_wallet_did(wallet_id=wallet["id"])  # type: ignore[no-untyped-call]
                 )["did_id"]
                 if did_id is None:
                     self.non_did_nft_wallet_ids.append(wallet["id"])
@@ -74,7 +75,9 @@ class Minter:
         self.xch_wallet_id = xch_wallets[0]["id"]
 
     async def get_funding_coin(self, amount: int) -> Coin:
-        coins = await self.wallet_client.select_coins(amount=amount, wallet_id=self.xch_wallet_id)  # type: ignore
+        coins = await self.wallet_client.select_coins(
+            amount=amount, wallet_id=self.xch_wallet_id
+        )
         if len(coins) > 1:
             raise ValueError(
                 "Bulk minting requires a single coin with value greater than %s"
@@ -85,7 +88,7 @@ class Minter:
     async def get_tx_from_mempool(
         self, sb_name: bytes32
     ) -> Tuple[bool, Optional[bytes32]]:
-        mempool_items = await self.node_client.get_all_mempool_items()  # type: ignore
+        mempool_items = await self.node_client.get_all_mempool_items()
         for item in mempool_items.items():
             if bytes32(hexstr_to_bytes(item[1]["spend_bundle_name"])) == sb_name:
                 return True, item[0]
@@ -120,7 +123,7 @@ class Minter:
             assert isinstance(did_coin_record, CoinRecord)
             did_coin = did_coin_record.coin
             assert isinstance(did_coin, Coin)
-            did_coin_dict: Optional[Dict] = did_coin.to_json_dict()
+            did_coin_dict: Optional[Dict[str, Any]] = did_coin.to_json_dict()
         else:
             did_coin = None
             did_coin_dict = None
@@ -176,7 +179,7 @@ class Minter:
         return sb_cost
 
     async def is_mempool_full(self, sb_cost: int) -> bool:
-        mempool_items: Dict = await self.node_client.get_all_mempool_items()
+        mempool_items = await self.node_client.get_all_mempool_items()
         costs = 0
         for key, val in mempool_items.items():
             costs += val["cost"]
@@ -194,7 +197,7 @@ class Minter:
         if max_fee:
             total_fee = max_fee
         else:
-            mempool_items: Dict = await self.node_client.get_all_mempool_items()
+            mempool_items = await self.node_client.get_all_mempool_items()
             costs = []
             fees = []
             fee_per_costs = []
@@ -215,7 +218,7 @@ class Minter:
                 return spend, 0
             total_fee = sb_cost * (fee_per_cost * attempt)
         print("Fee for inclusion: {}".format(total_fee))
-        fee_tx = await self.wallet_client.create_signed_transaction(  # type: ignore
+        fee_tx = await self.wallet_client.create_signed_transaction(
             additions=[
                 {
                     "amount": fee_coin.amount - total_fee,
@@ -229,7 +232,7 @@ class Minter:
         return spend_with_fee, total_fee
 
     async def sb_in_mempool(self, sb_name: bytes32) -> bool:
-        mempool_items = await self.node_client.get_all_mempool_items()  # type: ignore
+        mempool_items = await self.node_client.get_all_mempool_items()
         for item in mempool_items.items():
             if bytes32(hexstr_to_bytes(item[1]["spend_bundle_name"])) == sb_name:
                 return True
@@ -373,7 +376,7 @@ class Minter:
     async def coin_in_mempool(self, funding_coin: Coin) -> Optional[SpendBundle]:
         # the raw spend bundle won't be included in mempool if it has fee added, so we have to check
         # for matching funding coin name in the parent ids of the additions
-        mempool_items = await self.node_client.get_all_mempool_items()  # type: ignore
+        mempool_items = await self.node_client.get_all_mempool_items()
         for item in mempool_items.items():
             for coin in item[1]["additions"]:
                 if bytes32.from_hexstr(coin["parent_coin_info"]) == funding_coin.name():
@@ -403,7 +406,7 @@ class Minter:
                 len(spend_bundles) * self.spend_cost(spend_bundles[0]) * 5
             )
         fee_coin = (
-            await self.wallet_client.select_coins(  # type: ignore
+            await self.wallet_client.select_coins(
                 amount=estimated_max_fee,
                 wallet_id=self.xch_wallet_id,
                 excluded_coins=[funding_coin],
