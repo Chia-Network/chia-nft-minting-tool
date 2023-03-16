@@ -3,9 +3,13 @@
 ## Setup Instructions
 - Stop any running wallet/node instances: `chia stop -d all`
 
-- Clone this repo, create/activate a new virtual environment
+- Clone this repo, create/activate a new virtual environment and update pip. Note instructions for createing the python venv may vary depending on your OS
 ```bash
 git clone https://github.com/Chia-Network/chia-nft-minting-tool.git
+cd chia-nft-minting-tool
+python3 -m venv venv
+source ./venv/bin/activate
+pip install --upgrade pip
 ```
 
 - Install chianft and the necessary chia-blockchain branch (make sure to include the '.' at the end):
@@ -79,7 +83,16 @@ Tests are located in the tests directory. To run them, make sure to install the 
 pip install --extra-index https://pypi.chia.net/simple/ --editable .[dev]
 ```
 
-To run the tests use:
+Then you need to setup the simulator, run the wallet, and create a DID:
+```
+chia init
+cdv sim create
+export CHIA_ROOT=~/.chia/simulator/main/
+chia start wallet
+chia wallet did create
+```
+
+Now, you can run the tests:
 ```bash
 pytest tests/test_mint.py
 ```
