@@ -4,15 +4,14 @@ with open("README.md", "rt", encoding="UTF-8") as fh:
     long_description = fh.read()
 
 dependencies = [
-    # "chia-blockchain @ git+https://github.com/Chia-Network/chia-blockchain.git@1.6.2",
-    "chia-blockchain==1.7.0",
-    "packaging==21.3",
+    "chia-blockchain>=1.8.1",
+    "packaging==23.0",
 ]
 
 dev_dependencies = [
     "build",
     "click~=8.1.3",
-    "chia-dev-tools~=1.1.5",
+    "chia-dev-tools~=1.2.0",
     "coverage",
     "pre-commit",
     "pylint",

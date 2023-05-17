@@ -16,10 +16,11 @@ from chia.types.mempool_item import MempoolItem
 from chia.types.spend_bundle import SpendBundle
 from chia.util.byte_types import hexstr_to_bytes
 from chia.util.ints import uint64
-from chia.wallet.did_wallet.did_wallet_puzzles import LAUNCHER_PUZZLE_HASH
+from chia.wallet.did_wallet.did_wallet_puzzles import INTERMEDIATE_LAUNCHER_MOD
 from chia.wallet.trading.offer import Offer
 from chia.wallet.util.wallet_types import WalletType
 
+INTERMEDIATE_LAUNCHER_MOD_HASH = INTERMEDIATE_LAUNCHER_MOD.get_tree_hash()
 
 class Minter:
     def __init__(
@@ -439,7 +440,7 @@ class Minter:
             launcher_ids = [
                 coin.name().hex()
                 for coin in sb.removals()
-                if coin.puzzle_hash == LAUNCHER_PUZZLE_HASH
+                if coin.puzzle_hash == INTERMEDIATE_LAUNCHER_MOD_HASH
             ]
             if create_sell_offer:
                 await self.create_offer(launcher_ids, create_sell_offer)
