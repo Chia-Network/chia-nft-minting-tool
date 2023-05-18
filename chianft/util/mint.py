@@ -474,55 +474,35 @@ class Minter:
         )  # type: ignore[no-untyped-call]
         nft_count = len(wallet_nft_resp["nft_list"])
         print(f"NFTs found in wallet: {nft_count}")
-        # if nft_count > 0:
-        #     res_keys = wallet_nft_resp["nft_list"][0].keys()
-        #     print(res_keys)
-        #     print(wallet_nft_resp["nft_list"][0]["launcher_id"])
-        #     print(wallet_nft_resp["nft_list"][0]["nft_id"])
-        #     print(type(wallet_nft_resp["nft_list"][0]["launcher_id"]))
-        # else:
-        #     print("No matching NFTs found")
 
-        # wallet_nfts = []
-        # for nft in wallet_nft_resp["nft_list"]:
-        #     if "nft_id" in nft.keys():
-        #         wallet_nfts.append(nft["nft_id"])
-        #         nft_id_count += 1
-        #     elif "launcher_id" in nft.keys():
-        #         wallet_nfts.append(nft["launcher_id"])
-        #         launcher_id_count += 1
         wallet_nfts = [bytes32.from_hexstr(nft["launcher_id"]) for nft in wallet_nft_resp["nft_list"]]
         
-        final_nfts = [nft for nft in nft_ids if nft in wallet_nfts]
+        final_nfts = [encode_puzzle_hash(nft, AddressType.NFT.value) for nft in nft_ids if nft in wallet_nfts]
 
         final_count = len(final_nfts)
-
-        # print(f"NFT_IDs: {nft_id_count}")
-        # print(f"LAUNCHER_IDs: {launcher_id_count}")
-        # print(f"Wallet Count: {len(wallet_nfts)}")
         print(f"Total to be transferred: {final_count}")
         
-        # for i in range(0, len(final_nfts), chunk):
-        #     nft_subset = final_nfts[i : i + chunk]
-        #     nft_coin_list = [
-        #         {"nft_coin_id": nft_id, "wallet_id": wallet_id} for nft_id in nft_subset
-        #     ]
-        #     request = {
-        #         "nft_coin_list": nft_coin_list,
-        #         "target_address": to_address,
-        #         "fee": fee,
-        #     }
-        #     resp = await self.wallet_client.fetch("nft_transfer_bulk", request)
-        #     transfer_sb = SpendBundle.from_json_dict(resp["spend_bundle"])
-        #     print("Spend successfully submitted. Waiting for confirmation")
-        #     tx_confirmed = await self.monitor_mempool(transfer_sb)
-        #     if tx_confirmed:
-        #         print(f"Spend confirmed. Transferred {chunk} NFTs")
-        #         continue
-        #     else:
-        #         print(
-        #             "Spend was submitted to mempool but is not confirmed. Wait and try again"
-        #         )
+        for i in range(0, len(final_nfts), chunk):
+            nft_subset = final_nfts[i : i + chunk]
+            nft_coin_list = [
+                {"nft_coin_id": nft_id, "wallet_id": wallet_id} for nft_id in nft_subset
+            ]
+            request = {
+                "nft_coin_list": nft_coin_list,
+                "target_address": to_address,
+                "fee": fee,
+            }
+            resp = await self.wallet_client.fetch("nft_transfer_bulk", request)
+            transfer_sb = SpendBundle.from_json_dict(resp["spend_bundle"])
+            print("Spend successfully submitted. Waiting for confirmation")
+            tx_confirmed = await self.monitor_mempool(transfer_sb)
+            if tx_confirmed:
+                print(f"Spend confirmed. Transferred {chunk} NFTs")
+                continue
+            else:
+                print(
+                    "Spend was submitted to mempool but is not confirmed. Wait and try again"
+                )
         return
 
     async def create_offers_from_spends(
