@@ -476,6 +476,8 @@ class Minter:
         if nft_count > 0:
             res_keys = wallet_nft_resp["nft_list"][0].keys()
             print(res_keys)
+            print(wallet_nft_resp["nft_list"][0]["launcher_id"])
+            print(type(wallet_nft_resp["nft_list"][0]["launcher_id"]))
         else:
             print("No matching NFTs found")
 
@@ -494,6 +496,7 @@ class Minter:
         final_nfts = [nft for nft in nft_ids if nft in wallet_nfts]
 
         final_count = len(final_nfts)
+
         print(f"NFT_IDs: {nft_id_count}")
         print(f"LAUNCHER_IDs: {launcher_id_count}")
         print(f"Wallet Count: {len(wallet_nfts)}")
