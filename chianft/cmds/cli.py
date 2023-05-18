@@ -321,7 +321,7 @@ def transfer_nfts_cmd(
                 to_address,
                 uint64(fee),
             )
-            print("Transferred all NFTs")
+            print("")
 
         finally:
             node_client.close()
