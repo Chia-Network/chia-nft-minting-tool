@@ -486,7 +486,7 @@ class Minter:
             if "nft_id" in nft.keys():
                 wallet_nfts.append(nft["nft_id"])
                 nft_id_count += 1
-            if "launcher_id" in nft.keys():
+            elif "launcher_id" in nft.keys():
                 wallet_nfts.append(nft["launcher_id"])
                 launcher_id_count += 1
         # wallet_nfts = [nft["nft_id"] for nft in wallet_nft_resp["nft_list"]]
