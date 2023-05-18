@@ -480,16 +480,23 @@ class Minter:
             print("No matching NFTs found")
 
         wallet_nfts = []
+        nft_id_count = 0
+        launcher_id_count = 0
         for nft in wallet_nft_resp["nft_list"]:
             if "nft_id" in nft.keys():
                 wallet_nfts.append(nft["nft_id"])
+                nft_id_count += 1
             if "launcher_id" in nft.keys():
                 wallet_nfts.append(nft["launcher_id"])
+                launcher_id_count += 1
         # wallet_nfts = [nft["nft_id"] for nft in wallet_nft_resp["nft_list"]]
-
+        
         final_nfts = [nft for nft in nft_ids if nft in wallet_nfts]
 
         final_count = len(final_nfts)
+        print(f"NFT_IDs: {nft_id_count}")
+        print(f"LAUNCHER_IDs: {launcher_id_count}")
+        print(f"Wallet Count: {len(wallet_nfts)}")
         print(f"Total to be transferred: {final_count}")
         
         # for i in range(0, len(final_nfts), chunk):
