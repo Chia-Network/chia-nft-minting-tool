@@ -332,6 +332,93 @@ def transfer_nfts_cmd(
     asyncio.get_event_loop().run_until_complete(do_command())
 
 
+@cli.command("create-offers", short_help="Create offers for a set of nft spend bundles")
+@click.argument("bundle_input", nargs=1, required=True, type=click.Path())
+@click.option(
+    "-w",
+    "--wallet-id",
+    required=True,
+    help="The NFT wallet ID where the nfts to offer are held",
+)
+@click.option(
+    "-o",
+    "--offer",
+    type=int,
+    required=False,
+    default=0,
+    help="The amount (in mojos) requested for each nft",
+)
+@click.option(
+    "-wp",
+    "--wallet-rpc-port",
+    help="Set the port where the Wallet is hosting the RPC interface. See the rpc_port under wallet in config.yaml",
+    type=int,
+    default=None,
+)
+@click.option(
+    "-f",
+    "--fingerprint",
+    help="Set the fingerprint to specify which wallet to use",
+    type=int,
+    default=None,
+)
+@click.option(
+    "-np",
+    "--node-rpc-port",
+    help="Set the port where the Node is hosting the RPC interface. See the rpc_port under full_node in config.yaml",
+    type=int,
+    default=None,
+)
+def create_offers_cmd(
+    bundle_input: Path,
+    wallet_id: int,
+    offer: int,
+    wallet_rpc_port: Optional[int] = None,
+    fingerprint: Optional[int] = None,
+    node_rpc_port: Optional[int] = None,
+) -> None:
+    """
+    \b
+    BUNDLE_INPUT is the path of the saved spend bundles from create-mint-spend-bundles
+    """
+
+    async def do_command() -> None:
+        maybe_clients = await get_node_and_wallet_clients(
+            node_rpc_port, wallet_rpc_port, fingerprint
+        )
+        if maybe_clients is None:
+            print("Failed to connect to wallet and node")
+            return
+        node_client, wallet_client = maybe_clients
+        if node_client is None or wallet_client is None:
+            print("Failed to connect to wallet and node")
+            return
+
+        try:
+            spends = []
+            with open(bundle_input, "rb") as f:
+                spends_bytes = pickle.load(f)
+            for spend_bytes in spends_bytes:
+                spends.append(SpendBundle.from_bytes(spend_bytes))
+
+            minter = Minter(wallet_client, node_client)
+            print("Creating offers from spend bundles. This may take awhile...")
+            num_offers = await minter.create_offers_from_spends(
+                spends,
+                int(wallet_id),
+                uint64(offer),
+            )
+            print(f"Successfully created offers for {num_offers} NFTs")
+
+        finally:
+            node_client.close()
+            wallet_client.close()
+            await node_client.await_closed()
+            await wallet_client.await_closed()
+
+    asyncio.get_event_loop().run_until_complete(do_command())
+
+
 def main() -> None:
     monkey_patch_click()
     asyncio.run(cli())  # pylint: disable=no-value-for-parameter

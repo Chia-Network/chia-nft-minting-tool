@@ -13,7 +13,7 @@ from chia.types.blockchain_format.program import INFINITE_COST
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_record import CoinRecord
 from chia.types.spend_bundle import SpendBundle
-from chia.util.bech32m import encode_puzzle_hash
+from chia.util.bech32m import decode_puzzle_hash, encode_puzzle_hash
 from chia.util.byte_types import hexstr_to_bytes
 from chia.util.ints import uint64
 from chia.wallet.singleton import SINGLETON_LAUNCHER_PUZZLE_HASH
@@ -495,6 +495,32 @@ class Minter:
                     "Spend was submitted to mempool but is not confirmed. Wait and try again"
                 )
         return
+
+    async def create_offers_from_spends(
+        self, spends: List[SpendBundle], wallet_id: int, offer_amount: uint64
+    ) -> int:
+        nft_ids = []
+        for sb in spends:
+            launcher_ids = [
+                encode_puzzle_hash(coin.name(), AddressType.NFT.value)
+                for coin in sb.removals()
+                if coin.puzzle_hash == SINGLETON_LAUNCHER_PUZZLE_HASH
+            ]
+            nft_ids.extend(launcher_ids)
+        await self.get_wallet_ids(wallet_id)
+        # Check that we still have the nfts
+        wallet_nft_resp = await self.wallet_client.list_nfts(
+            wallet_id
+        )  # type: ignore[no-untyped-call]
+        wallet_nfts = [nft["nft_id"] for nft in wallet_nft_resp["nft_list"]]
+        final_nfts = [
+            decode_puzzle_hash(nft).hex() for nft in nft_ids if nft in wallet_nfts
+        ]
+        if not final_nfts:
+            raise ValueError(f"No matching NFTs found in wallet with ID {wallet_id}")
+        Path("offers").mkdir(parents=True, exist_ok=True)
+        await self.create_offer(final_nfts, offer_amount)
+        return len(final_nfts)
 
 
 def read_metadata_csv(
