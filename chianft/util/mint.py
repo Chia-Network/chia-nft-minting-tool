@@ -12,13 +12,15 @@ from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import INFINITE_COST
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_record import CoinRecord
-from chia.types.mempool_item import MempoolItem
 from chia.types.spend_bundle import SpendBundle
+from chia.util.bech32m import encode_puzzle_hash
 from chia.util.byte_types import hexstr_to_bytes
 from chia.util.ints import uint64
 from chia.wallet.singleton import SINGLETON_LAUNCHER_PUZZLE_HASH
 from chia.wallet.trading.offer import Offer
+from chia.wallet.util.address_type import AddressType
 from chia.wallet.util.wallet_types import WalletType
+
 
 class Minter:
     def __init__(
@@ -227,6 +229,7 @@ class Minter:
             coins=[fee_coin],
             fee=uint64(total_fee),
         )
+        assert isinstance(fee_tx.spend_bundle, SpendBundle)
         spend_with_fee = SpendBundle.aggregate([fee_tx.spend_bundle, spend])
         return spend_with_fee, total_fee
 
@@ -446,6 +449,52 @@ class Minter:
             bs = await self.node_client.get_blockchain_state()
             mempool_pc = bs["mempool_cost"] / bs["mempool_max_total_cost"]
             print("Mempool utilization: {:.0%}".format(mempool_pc))
+
+    async def transfer_nfts(
+        self,
+        spends: List[SpendBundle],
+        wallet_id: int,
+        to_address: str,
+        fee: uint64 = uint64(0),
+    ) -> None:
+        nft_ids = []
+        for sb in spends:
+            launcher_ids = [
+                encode_puzzle_hash(coin.name(), AddressType.NFT.value)
+                for coin in sb.removals()
+                if coin.puzzle_hash == SINGLETON_LAUNCHER_PUZZLE_HASH
+            ]
+            nft_ids.extend(launcher_ids)
+        chunk = 25
+        await self.get_wallet_ids(wallet_id)
+        # Check that we still have the nfts to transfer
+        wallet_nft_resp = await self.wallet_client.list_nfts(
+            wallet_id
+        )  # type: ignore[no-untyped-call]
+        wallet_nfts = [nft["nft_id"] for nft in wallet_nft_resp["nft_list"]]
+        final_nfts = [nft for nft in nft_ids if nft in wallet_nfts]
+        for i in range(0, len(final_nfts), chunk):
+            nft_subset = final_nfts[i : i + chunk]
+            nft_coin_list = [
+                {"nft_coin_id": nft_id, "wallet_id": wallet_id} for nft_id in nft_subset
+            ]
+            request = {
+                "nft_coin_list": nft_coin_list,
+                "target_address": to_address,
+                "fee": fee,
+            }
+            resp = await self.wallet_client.fetch("nft_transfer_bulk", request)
+            transfer_sb = SpendBundle.from_json_dict(resp["spend_bundle"])
+            print("Spend successfully submitted. Waiting for confirmation")
+            tx_confirmed = await self.monitor_mempool(transfer_sb)
+            if tx_confirmed:
+                print(f"Spend confirmed. Transferred {chunk} NFTs")
+                continue
+            else:
+                print(
+                    "Spend was submitted to mempool but is not confirmed. Wait and try again"
+                )
+        return
 
 
 def read_metadata_csv(
