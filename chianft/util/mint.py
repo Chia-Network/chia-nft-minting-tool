@@ -460,7 +460,8 @@ class Minter:
         nft_ids = []
         for sb in spends:
             launcher_ids = [
-                encode_puzzle_hash(coin.name(), AddressType.NFT.value)
+                # encode_puzzle_hash(coin.name(), AddressType.NFT.value)
+                coin.name()
                 for coin in sb.removals()
                 if coin.puzzle_hash == SINGLETON_LAUNCHER_PUZZLE_HASH
             ]
@@ -472,34 +473,33 @@ class Minter:
             wallet_id
         )  # type: ignore[no-untyped-call]
         nft_count = len(wallet_nft_resp["nft_list"])
-        print(f"NFTs found: {nft_count}")
-        if nft_count > 0:
-            res_keys = wallet_nft_resp["nft_list"][0].keys()
-            print(res_keys)
-            print(wallet_nft_resp["nft_list"][0]["launcher_id"])
-            print(type(wallet_nft_resp["nft_list"][0]["launcher_id"]))
-        else:
-            print("No matching NFTs found")
+        print(f"NFTs found in wallet: {nft_count}")
+        # if nft_count > 0:
+        #     res_keys = wallet_nft_resp["nft_list"][0].keys()
+        #     print(res_keys)
+        #     print(wallet_nft_resp["nft_list"][0]["launcher_id"])
+        #     print(wallet_nft_resp["nft_list"][0]["nft_id"])
+        #     print(type(wallet_nft_resp["nft_list"][0]["launcher_id"]))
+        # else:
+        #     print("No matching NFTs found")
 
-        wallet_nfts = []
-        nft_id_count = 0
-        launcher_id_count = 0
-        for nft in wallet_nft_resp["nft_list"]:
-            if "nft_id" in nft.keys():
-                wallet_nfts.append(nft["nft_id"])
-                nft_id_count += 1
-            elif "launcher_id" in nft.keys():
-                wallet_nfts.append(nft["launcher_id"])
-                launcher_id_count += 1
-        # wallet_nfts = [nft["nft_id"] for nft in wallet_nft_resp["nft_list"]]
+        # wallet_nfts = []
+        # for nft in wallet_nft_resp["nft_list"]:
+        #     if "nft_id" in nft.keys():
+        #         wallet_nfts.append(nft["nft_id"])
+        #         nft_id_count += 1
+        #     elif "launcher_id" in nft.keys():
+        #         wallet_nfts.append(nft["launcher_id"])
+        #         launcher_id_count += 1
+        wallet_nfts = [bytes32.from_hexstr(nft["launcher_id"]) for nft in wallet_nft_resp["nft_list"]]
         
         final_nfts = [nft for nft in nft_ids if nft in wallet_nfts]
 
         final_count = len(final_nfts)
 
-        print(f"NFT_IDs: {nft_id_count}")
-        print(f"LAUNCHER_IDs: {launcher_id_count}")
-        print(f"Wallet Count: {len(wallet_nfts)}")
+        # print(f"NFT_IDs: {nft_id_count}")
+        # print(f"LAUNCHER_IDs: {launcher_id_count}")
+        # print(f"Wallet Count: {len(wallet_nfts)}")
         print(f"Total to be transferred: {final_count}")
         
         # for i in range(0, len(final_nfts), chunk):
