@@ -11,7 +11,6 @@ dependencies = [
 dev_dependencies = [
     "build",
     "click~=8.1.3",
-    "chia-dev-tools~=1.2.0",
     "coverage",
     "pre-commit",
     "pylint",
