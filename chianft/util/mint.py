@@ -481,8 +481,10 @@ class Minter:
 
         wallet_nfts = []
         for nft in wallet_nft_resp["nft_list"]:
-            if ("nft_id" in nft.keys()) or ("launcher_id" in nft.keys()):
+            if "nft_id" in nft.keys():
                 wallet_nfts.append(nft["nft_id"])
+            if "launcher_id" in nft.keys():
+                wallet_nfts.append(nft["launcher_id"])
         # wallet_nfts = [nft["nft_id"] for nft in wallet_nft_resp["nft_list"]]
 
         final_nfts = [nft for nft in nft_ids if nft in wallet_nfts]
