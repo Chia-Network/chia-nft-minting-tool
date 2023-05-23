@@ -1,5 +1,7 @@
 # ChiaNFT
 
+For detailed setup and testing instructions, visit the [NFT Bulk Minting tool](https://docs.chia.net/guides/nft-bulk-mint) page on Chia Docs.
+
 ## Setup Instructions
 - Stop any running wallet/node instances: `chia stop -d all`
 
