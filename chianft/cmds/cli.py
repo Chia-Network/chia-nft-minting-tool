@@ -332,6 +332,113 @@ def transfer_nfts_cmd(
     asyncio.get_event_loop().run_until_complete(do_command())
 
 
+@cli.command(
+    "transfer-nfts-by-hash",
+    short_help="Transfer NFTs with a specific hash in bulk to a single address",
+)
+@click.option(
+    "-hash",
+    "--hash",
+    "hash_str",
+    type=str,
+    required=True,
+    help="The hash of NFTs to transfer",
+)
+@click.option(
+    "-w",
+    "--wallet-id",
+    required=True,
+    help="The NFT wallet ID where the nfts to transfer are held",
+)
+@click.option(
+    "-t",
+    "--to-address",
+    required=True,
+    help="A standard XCH address where NFTs will be sent",
+)
+@click.option(
+    "-m",
+    "--fee",
+    type=int,
+    required=False,
+    default=0,
+    help="Optional default fee - all spends will attempt to use this fee. If not given, fees are estimated",
+)
+@click.option(
+    "-d",
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    required=False,
+    help="Option to check the number of NFTs that will be transferred by this command ",
+)
+@click.option(
+    "-wp",
+    "--wallet-rpc-port",
+    help="Set the port where the Wallet is hosting the RPC interface. See the rpc_port under wallet in config.yaml",
+    type=int,
+    default=None,
+)
+@click.option(
+    "-f",
+    "--fingerprint",
+    help="Set the fingerprint to specify which wallet to use",
+    type=int,
+    default=None,
+)
+@click.option(
+    "-np",
+    "--node-rpc-port",
+    help="Set the port where the Node is hosting the RPC interface. See the rpc_port under full_node in config.yaml",
+    type=int,
+    default=None,
+)
+def transfer_nfts_by_hash_cmd(
+    hash_str: str,
+    to_address: str,
+    wallet_id: int,
+    fee: int = 0,
+    dry_run: bool = False,
+    wallet_rpc_port: Optional[int] = None,
+    fingerprint: Optional[int] = None,
+    node_rpc_port: Optional[int] = None,
+) -> None:
+    """
+    \b
+    BUNDLE_INPUT is the path of the saved spend bundles from create-mint-spend-bundles
+    """
+
+    async def do_command() -> None:
+        maybe_clients = await get_node_and_wallet_clients(
+            node_rpc_port, wallet_rpc_port, fingerprint
+        )
+        if maybe_clients is None:
+            print("Failed to connect to wallet and node")
+            return
+        node_client, wallet_client = maybe_clients
+        if node_client is None or wallet_client is None:
+            print("Failed to connect to wallet and node")
+            return
+
+        try:
+            minter = Minter(wallet_client, node_client)
+            await minter.transfer_nfts_by_hash(
+                hash_str,
+                int(wallet_id),
+                to_address,
+                uint64(fee),
+                dry_run,
+            )
+
+        finally:
+            node_client.close()
+            wallet_client.close()
+            await node_client.await_closed()
+            await wallet_client.await_closed()
+
+    asyncio.get_event_loop().run_until_complete(do_command())
+
+
 @cli.command("create-offers", short_help="Create offers for a set of nft spend bundles")
 @click.argument("bundle_input", nargs=1, required=True, type=click.Path())
 @click.option(

@@ -450,6 +450,57 @@ class Minter:
             mempool_pc = bs["mempool_cost"] / bs["mempool_max_total_cost"]
             print("Mempool utilization: {:.0%}".format(mempool_pc))
 
+    async def transfer_nfts_by_hash(
+        self,
+        hash_str: str,
+        wallet_id: int,
+        to_address: str,
+        fee: uint64 = uint64(0),
+        dry_run: bool = False,
+    ) -> None:
+        wallet_nft_resp = await self.wallet_client.list_nfts(
+            wallet_id
+        )  # type: ignore[no-untyped-call]
+        wallet_nfts = wallet_nft_resp["nft_list"]
+        final_nfts = [
+            nft["nft_coin_id"]
+            for nft in wallet_nfts
+            if bytes32.from_hexstr(nft["data_hash"]) == bytes32.from_hexstr(hash_str)
+        ]
+        if dry_run:
+            print(f"Transfer NFTs with hash: {hash_str}")
+            print(
+                f"Send {len(final_nfts)} NFTs from wallet with id {wallet_id} to address: {to_address}"
+            )
+            print(f"Total NFTs in wallet: {len(wallet_nfts)}")
+            return
+
+        print(f"Transferring {len(final_nfts)} to address {to_address}")
+        chunk = 25
+        for i in range(0, len(final_nfts), chunk):
+            nft_subset = final_nfts[i : i + chunk]
+            nft_coin_list = [
+                {"nft_coin_id": coin_id, "wallet_id": wallet_id}
+                for coin_id in nft_subset
+            ]
+            request = {
+                "nft_coin_list": nft_coin_list,
+                "target_address": to_address,
+                "fee": fee,
+            }
+            resp = await self.wallet_client.fetch("nft_transfer_bulk", request)
+            transfer_sb = SpendBundle.from_json_dict(resp["spend_bundle"])
+            print("Spend successfully submitted. Waiting for confirmation")
+            tx_confirmed = await self.monitor_mempool(transfer_sb)
+            if tx_confirmed:
+                print(f"Spend confirmed. Transferred {chunk} NFTs")
+                continue
+            else:
+                print(
+                    "Spend was submitted to mempool but is not confirmed. Wait and try again"
+                )
+        return
+
     async def transfer_nfts(
         self,
         spends: List[SpendBundle],
@@ -475,13 +526,20 @@ class Minter:
         nft_count = len(wallet_nft_resp["nft_list"])
         print(f"NFTs found in wallet: {nft_count}")
 
-        wallet_nfts = [bytes32.from_hexstr(nft["launcher_id"]) for nft in wallet_nft_resp["nft_list"]]
-        
-        final_nfts = [encode_puzzle_hash(nft, AddressType.NFT.value) for nft in nft_ids if nft in wallet_nfts]
+        wallet_nfts = [
+            bytes32.from_hexstr(nft["launcher_id"])
+            for nft in wallet_nft_resp["nft_list"]
+        ]
+
+        final_nfts = [
+            encode_puzzle_hash(nft, AddressType.NFT.value)
+            for nft in nft_ids
+            if nft in wallet_nfts
+        ]
 
         final_count = len(final_nfts)
         print(f"Total to be transferred: {final_count}")
-        
+
         for i in range(0, len(final_nfts), chunk):
             nft_subset = final_nfts[i : i + chunk]
             nft_coin_list = [
