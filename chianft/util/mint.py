@@ -462,12 +462,12 @@ class Minter:
             wallet_id
         )  # type: ignore[no-untyped-call]
         wallet_nfts = wallet_nft_resp["nft_list"]
+        # final_nfts = [
+        #     nft["nft_coin_id"]
+        #     for nft in wallet_nfts
+        #     if bytes32.from_hexstr(nft["data_hash"]) == bytes32.from_hexstr(hash_str)
+        # ]
         final_nfts = [
-            nft["nft_coin_id"]
-            for nft in wallet_nfts
-            if bytes32.from_hexstr(nft["data_hash"]) == bytes32.from_hexstr(hash_str)
-        ]
-        did_nfts = [
             nft["nft_coin_id"]
             for nft in wallet_nfts
             if (bytes32.from_hexstr(nft["data_hash"]) == bytes32.from_hexstr(hash_str))
@@ -478,7 +478,7 @@ class Minter:
             print(
                 f"Send {len(final_nfts)} NFTs from wallet with id {wallet_id} to address: {to_address}"
             )
-            print(f"NFTs with DID: {len(did_nfts)}")
+            # print(f"NFTs with DID: {len(did_nfts)}")
             print(f"Total NFTs in wallet: {len(wallet_nfts)}")
             return
 
