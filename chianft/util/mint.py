@@ -471,7 +471,7 @@ class Minter:
             nft["nft_coin_id"]
             for nft in wallet_nfts
             if (bytes32.from_hexstr(nft["data_hash"]) == bytes32.from_hexstr(hash_str))
-            and (nft["minter_did"] is not None)
+            and (nft["minter_did"] is None)
         ]
         if dry_run:
             print(f"Transfer NFTs with hash: {hash_str}")
