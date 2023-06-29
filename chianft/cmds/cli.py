@@ -115,7 +115,7 @@ def create_spend_bundles_cmd(
 ) -> None:
     """
     \b
-    INPUT is the path of the csv file of NFT matadata to be created
+    INPUT is the path of the csv file of NFT metadata to be created
     OUTPUT is the path of the pickle file where spendbundles will be written
     """
 
