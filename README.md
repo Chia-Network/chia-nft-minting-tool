@@ -96,7 +96,7 @@ chia wallet did create
 
 Now, you can run the tests:
 ```bash
-pytest tests/test_mint.py -n 0
+pytest tests/test_mint.py
 ```
 
 # Tool Specification

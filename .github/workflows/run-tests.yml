@@ -62,4 +62,4 @@ jobs:
           chia start wallet
           sleep 10
           chia wallet did create
-          pytest -n 0 tests/test_mint.py
+          pytest tests/test_mint.py
