@@ -12,13 +12,13 @@ from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import INFINITE_COST
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_record import CoinRecord
-from chia.types.mempool_item import MempoolItem
 from chia.types.spend_bundle import SpendBundle
 from chia.util.byte_types import hexstr_to_bytes
 from chia.util.ints import uint64
 from chia.wallet.singleton import SINGLETON_LAUNCHER_PUZZLE_HASH
 from chia.wallet.trading.offer import Offer
 from chia.wallet.util.wallet_types import WalletType
+
 
 class Minter:
     def __init__(
@@ -227,6 +227,7 @@ class Minter:
             coins=[fee_coin],
             fee=uint64(total_fee),
         )
+        assert isinstance(fee_tx.spend_bundle, SpendBundle)
         spend_with_fee = SpendBundle.aggregate([fee_tx.spend_bundle, spend])
         return spend_with_fee, total_fee
 

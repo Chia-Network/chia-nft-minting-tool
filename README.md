@@ -88,7 +88,7 @@ pip install --extra-index https://pypi.chia.net/simple/ --editable .[dev]
 Then you need to setup the simulator, run the wallet, and create a DID:
 ```
 chia init
-cdv sim create
+chia dev sim create
 export CHIA_ROOT=~/.chia/simulator/main/
 chia start wallet
 chia wallet did create
@@ -96,7 +96,7 @@ chia wallet did create
 
 Now, you can run the tests:
 ```bash
-pytest tests/test_mint.py
+pytest tests/test_mint.py -n 0
 ```
 
 # Tool Specification

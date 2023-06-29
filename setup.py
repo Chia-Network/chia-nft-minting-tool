@@ -4,18 +4,18 @@ with open("README.md", "rt", encoding="UTF-8") as fh:
     long_description = fh.read()
 
 dependencies = [
-    "chia-blockchain==1.8.1",
-    "packaging==23.0",
+    "chia-blockchain==1.8.3rc1",
+    "packaging==23.1",
 ]
 
 dev_dependencies = [
     "build",
-    "click~=8.1.3",
+    "click==8.1.3",
     "coverage",
     "pre-commit",
     "pylint",
     "pytest",
-    "pytest-asyncio>=0.18.1",  # require attribute 'fixture'
+    "pytest-asyncio>=0.18.1",
     "pytest-monitor; sys_platform == 'linux'",
     "pytest-xdist",
     "twine",
@@ -23,10 +23,10 @@ dev_dependencies = [
     "faker",
     "flake8",
     "mypy",
-    "black==22.10.0",
-    "aiohttp_cors",  # For blackd
-    "ipython",  # For asyncio debugging
-    "pyinstaller==5.0",
+    "black==23.3.0",
+    "aiohttp_cors",
+    "ipython",
+    "pyinstaller==5.11.0",
     "pytest",
     "pytest-asyncio",
     "pytest-env",
