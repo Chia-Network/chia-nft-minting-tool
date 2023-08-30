@@ -34,6 +34,6 @@ repos:
     hooks:
     -   id: mypy
         name: mypy
-        entry: mypy .
+        entry: mypy
         language: system
         pass_filenames: false
