@@ -46,7 +46,7 @@ class Minter:
             self.did_wallet_id: int = 0
 
             did_id_for_nft = (
-                await self.wallet_client.get_nft_wallet_did(wallet_id=nft_wallet_id)  # type: ignore[no-untyped-call]
+                await self.wallet_client.get_nft_wallet_did(wallet_id=nft_wallet_id)
             )["did_id"]
             did_wallets = await self.wallet_client.get_wallets(
                 wallet_type=WalletType.DECENTRALIZED_ID
@@ -61,7 +61,7 @@ class Minter:
             self.non_did_nft_wallet_ids = []
             for wallet in nft_wallets:
                 did_id = (
-                    await self.wallet_client.get_nft_wallet_did(wallet_id=wallet["id"])  # type: ignore[no-untyped-call]
+                    await self.wallet_client.get_nft_wallet_did(wallet_id=wallet["id"])
                 )["did_id"]
                 if did_id is None:
                     self.non_did_nft_wallet_ids.append(wallet["id"])
@@ -114,10 +114,13 @@ class Minter:
         spend_bundles = []
         if mint_from_did:
             did = await self.wallet_client.get_did_id(wallet_id=self.did_wallet_id)
+            did_cr = await self.wallet_client.get_did_info(
+                coin_id=did["coin_id"], latest=True
+            )
             did_coin_record: Optional[
                 CoinRecord
             ] = await self.node_client.get_coin_record_by_name(
-                bytes32.from_hexstr(did["coin_id"])
+                bytes32.from_hexstr(did_cr["latest_coin"])
             )
             assert isinstance(did_coin_record, CoinRecord)
             did_coin = did_coin_record.coin
