@@ -12,13 +12,12 @@ from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import INFINITE_COST
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_record import CoinRecord
-from chia.types.mempool_item import MempoolItem
 from chia.types.spend_bundle import SpendBundle
 from chia.util.byte_types import hexstr_to_bytes
 from chia.util.ints import uint64
 from chia.wallet.singleton import SINGLETON_LAUNCHER_PUZZLE_HASH
-from chia.wallet.trading.offer import Offer
 from chia.wallet.util.wallet_types import WalletType
+
 
 class Minter:
     def __init__(
@@ -46,7 +45,7 @@ class Minter:
             self.did_wallet_id: int = 0
 
             did_id_for_nft = (
-                await self.wallet_client.get_nft_wallet_did(wallet_id=nft_wallet_id)  # type: ignore[no-untyped-call]
+                await self.wallet_client.get_nft_wallet_did(wallet_id=nft_wallet_id)
             )["did_id"]
             did_wallets = await self.wallet_client.get_wallets(
                 wallet_type=WalletType.DECENTRALIZED_ID
@@ -61,7 +60,7 @@ class Minter:
             self.non_did_nft_wallet_ids = []
             for wallet in nft_wallets:
                 did_id = (
-                    await self.wallet_client.get_nft_wallet_did(wallet_id=wallet["id"])  # type: ignore[no-untyped-call]
+                    await self.wallet_client.get_nft_wallet_did(wallet_id=wallet["id"])
                 )["did_id"]
                 if did_id is None:
                     self.non_did_nft_wallet_ids.append(wallet["id"])
@@ -114,22 +113,25 @@ class Minter:
         spend_bundles = []
         if mint_from_did:
             did = await self.wallet_client.get_did_id(wallet_id=self.did_wallet_id)
+            did_cr = await self.wallet_client.get_did_info(
+                coin_id=did["coin_id"], latest=True
+            )
             did_coin_record: Optional[
                 CoinRecord
             ] = await self.node_client.get_coin_record_by_name(
-                bytes32.from_hexstr(did["coin_id"])
+                bytes32.from_hexstr(did_cr["latest_coin"])
             )
-            assert isinstance(did_coin_record, CoinRecord)
+            assert did_coin_record is not None
             did_coin = did_coin_record.coin
-            assert isinstance(did_coin, Coin)
+            assert did_coin is not None
             did_coin_dict: Optional[Dict[str, Any]] = did_coin.to_json_dict()
         else:
             did_coin = None
             did_coin_dict = None
         did_lineage_parent = None
-        assert isinstance(chunk, int)
-        assert isinstance(royalty_percentage, int)
-        assert isinstance(royalty_address, str)
+        assert chunk is not None
+        assert royalty_percentage is not None
+        assert royalty_address is not None
         for i in range(0, mint_total, chunk):
             resp = await self.wallet_client.nft_mint_bulk(
                 wallet_id=self.nft_wallet_id,
@@ -156,7 +158,7 @@ class Minter:
                 c for c in sb.additions() if c.puzzle_hash == funding_coin.puzzle_hash
             ][0]
             if mint_from_did:
-                assert isinstance(did_coin, Coin)
+                assert did_coin is not None
                 did_lineage_parent = [
                     c for c in sb.removals() if c.name() == did_coin.name()
                 ][0].parent_coin_info.hex()
@@ -166,7 +168,7 @@ class Minter:
                     if (c.parent_coin_info == did_coin.name())
                     and (c.amount == did_coin.amount)
                 ][0]
-                assert isinstance(did_coin, Coin)
+                assert did_coin is not None
                 did_coin_dict = did_coin.to_json_dict()
         return spend_bundles
 
@@ -227,6 +229,7 @@ class Minter:
             coins=[fee_coin],
             fee=uint64(total_fee),
         )
+        assert fee_tx.spend_bundle is not None
         spend_with_fee = SpendBundle.aggregate([fee_tx.spend_bundle, spend])
         return spend_with_fee, total_fee
 
@@ -339,7 +342,7 @@ class Minter:
             coin_record = await self.node_client.get_coin_record_by_name(
                 xch_coin_to_spend.name()
             )
-            assert isinstance(coin_record, CoinRecord)
+            assert coin_record is not None
             if coin_record.spent_block_index == 0:
                 starting_spend_index: int = i
                 return xch_coin_to_spend, starting_spend_index
@@ -349,7 +352,7 @@ class Minter:
     async def create_offer(
         self, launcher_ids: List[str], create_sell_offer: int
     ) -> None:
-        assert isinstance(self.wallet_client, WalletRpcClient)
+        assert self.wallet_client is not None
         for launcher_id in launcher_ids:
             offer_dict = {
                 launcher_id: -1,
@@ -361,7 +364,7 @@ class Minter:
                         offer_dict, fee=0
                     )
                     filepath = "offers/{}.offer".format(launcher_id)
-                    assert isinstance(offer, Offer)
+                    assert offer is not None
                     with open(Path(filepath), "w") as file:
                         file.write(offer.to_bech32())
                     break
