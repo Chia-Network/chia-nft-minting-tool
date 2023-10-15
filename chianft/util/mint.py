@@ -17,6 +17,7 @@ from chia.util.byte_types import hexstr_to_bytes
 from chia.util.ints import uint64
 from chia.wallet.singleton import SINGLETON_LAUNCHER_PUZZLE_HASH
 from chia.wallet.util.wallet_types import WalletType
+from chia.wallet.util.tx_config import DEFAULT_COIN_SELECTION_CONFIG, DEFAULT_TX_CONFIG
 
 
 class Minter:
@@ -74,7 +75,7 @@ class Minter:
 
     async def get_funding_coin(self, amount: int) -> Coin:
         coins = await self.wallet_client.select_coins(
-            amount=amount, wallet_id=self.xch_wallet_id
+            amount=amount, wallet_id=self.xch_wallet_id, coin_selection_config=DEFAULT_COIN_SELECTION_CONFIG
         )
         if len(coins) > 1:
             raise ValueError(
@@ -146,6 +147,7 @@ class Minter:
                 did_coin=did_coin_dict,
                 did_lineage_parent=did_lineage_parent,
                 mint_from_did=mint_from_did,
+                tx_config=DEFAULT_TX_CONFIG,
             )
             if not resp["success"]:
                 raise ValueError(
@@ -228,6 +230,7 @@ class Minter:
             ],
             coins=[fee_coin],
             fee=uint64(total_fee),
+            tx_config=DEFAULT_TX_CONFIG,
         )
         assert fee_tx.spend_bundle is not None
         spend_with_fee = SpendBundle.aggregate([fee_tx.spend_bundle, spend])
@@ -407,11 +410,12 @@ class Minter:
             estimated_max_fee = (
                 len(spend_bundles) * self.spend_cost(spend_bundles[0]) * 5
             )
+        csc = DEFAULT_COIN_SELECTION_CONFIG.override(excluded_coin_ids=[funding_coin.name()])
         fee_coin = (
             await self.wallet_client.select_coins(
                 amount=estimated_max_fee,
                 wallet_id=self.xch_wallet_id,
-                excluded_coins=[funding_coin],
+                coin_selection_config=csc,
             )
         )[0]
 
