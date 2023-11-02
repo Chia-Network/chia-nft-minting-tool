@@ -1,0 +1,53 @@
+---
+name: Run Test Suite Nightly
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 11 * * *"
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}--${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/long_lived/')) && github.sha || '' }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os.runs-on }}
+    name: All tests
+    timeout-minutes: 30
+    strategy:
+      max-parallel: 4
+      fail-fast: false
+      matrix:
+        os:
+          - runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Test code with pytest against chia-blockchain main
+        shell: bash
+        run: |
+          python3 -m venv venv
+          if [[ ${{ matrix.os.runs-on }} == windows-latest ]]; then
+            source ./venv/Scripts/activate
+          else
+            . ./venv/bin/activate
+          fi
+          sed -i 's/chia-blockchain.*/chia-blockchain @ git+https:\/\/github.com\/Chia-Network\/chia-blockchain.git@main\",/g' setup.py
+          pip install --extra-index https://pypi.chia.net/simple/ --editable .[dev]
+          chia init
+          echo -ne "\n" | chia dev sim create
+          export CHIA_ROOT=~/.chia/simulator/main/
+          chia start wallet
+          sleep 10
+          chia wallet did create
+          pytest tests/test_mint.py
