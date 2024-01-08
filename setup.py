@@ -16,7 +16,7 @@ dev_dependencies = [
     "pytest-xdist==3.5.0",
     "isort==5.13.2",
     "faker==22.0.0",
-    "flake8==6.1.0",
+    "flake8==7.0.0",
     "mypy==1.8.0",
     "black==23.12.1",
     "types-setuptools==69.0.0.0",
