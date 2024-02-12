@@ -10,7 +10,7 @@ dependencies = [
 dev_dependencies = [
     "pre-commit==3.6.0",
     "pylint==3.0.3",
-    "pytest==7.4.4",
+    "pytest==8.0.0",
     "pytest-asyncio==0.23.5",
     "pytest-monitor==1.6.6; sys_platform == 'linux'",
     "pytest-xdist==3.5.0",
