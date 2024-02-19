@@ -18,7 +18,7 @@ dev_dependencies = [
     "faker==23.2.1",
     "flake8==7.0.0",
     "mypy==1.8.0",
-    "black==24.1.1",
+    "black==24.2.0",
     "types-setuptools==69.1.0.20240217",
 ]
 
