@@ -4,7 +4,7 @@ with open("README.md", "rt", encoding="UTF-8") as fh:
     long_description = fh.read()
 
 dependencies = [
-    "chia-blockchain==2.1.4",
+    "chia-blockchain==2.2.1",
 ]
 
 dev_dependencies = [
