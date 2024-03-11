@@ -11,7 +11,7 @@ dev_dependencies = [
     "pre-commit==3.6.2",
     "pylint==3.1.0",
     "pytest==8.1.1",
-    "pytest-asyncio==0.23.5",
+    "pytest-asyncio==0.23.5.post1",
     "pytest-monitor==1.6.6; sys_platform == 'linux'",
     "pytest-xdist==3.5.0",
     "isort==5.13.2",
