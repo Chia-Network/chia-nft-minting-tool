@@ -19,7 +19,7 @@ dev_dependencies = [
     "flake8==7.0.0",
     "mypy==1.9.0",
     "black==24.2.0",
-    "types-setuptools==69.1.0.20240310",
+    "types-setuptools==69.2.0.20240317",
 ]
 
 setup(
