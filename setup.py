@@ -8,7 +8,7 @@ dependencies = [
 ]
 
 dev_dependencies = [
-    "pre-commit==3.6.2",
+    "pre-commit==3.7.0",
     "pylint==3.1.0",
     "pytest==8.1.1",
     "pytest-asyncio==0.23.6",
