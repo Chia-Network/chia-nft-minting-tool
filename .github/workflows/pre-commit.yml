@@ -75,5 +75,6 @@ jobs:
           else
             . ./venv/bin/activate
           fi
+          pip install --upgrade pip
           pip install --extra-index https://pypi.chia.net/simple/ --editable .[dev]
           pre-commit run --all-files --verbose
