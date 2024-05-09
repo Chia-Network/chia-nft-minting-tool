@@ -46,7 +46,7 @@ jobs:
           - major_dot_minor: "3.12"
         exclude:
           - os:
-              matrix: windows
+              matrix: [windows,linux]
             arch:
               matrix: arm
 
