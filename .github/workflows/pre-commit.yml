@@ -67,14 +67,16 @@ jobs:
         with:
           python-version: ${{ matrix.python.major_dot_minor }}
 
+      - name: Create virtual environment
+        uses: Chia-Network/actions/create-venv@main
+        id: create-venv
+  
+      - name: Activate virtual environment
+        uses: Chia-Network/actions/activate-venv@main
+        with:
+          directories: ${{ steps.create-venv.outputs.activate-venv-directories }}
+  
       - shell: bash
         run: |
-          python3 -m venv venv
-          if [[ ${{ matrix.os.runs-on }} == windows-latest ]]; then
-            source ./venv/Scripts/activate
-          else
-            . ./venv/bin/activate
-          fi
-          pip install --upgrade pip
           pip install --extra-index https://pypi.chia.net/simple/ --editable .[dev]
           pre-commit run --all-files --verbose
