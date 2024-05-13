@@ -43,8 +43,7 @@ def create_metadata(filename: str, mint_total: int, has_targets: bool) -> str:
         metadata.append(sample)
     with open(filename, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerows([header])
-        writer.writerows(metadata)
+        writer.writerows([header, *metadata])
     return filename
 
 
