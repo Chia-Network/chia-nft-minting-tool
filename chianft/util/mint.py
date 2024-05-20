@@ -119,10 +119,10 @@ class Minter:
             did_cr = await self.wallet_client.get_did_info(
                 coin_id=did["coin_id"], latest=True
             )
-            did_coin_record: Optional[
-                CoinRecord
-            ] = await self.node_client.get_coin_record_by_name(
-                bytes32.from_hexstr(did_cr["latest_coin"])
+            did_coin_record: Optional[CoinRecord] = (
+                await self.node_client.get_coin_record_by_name(
+                    bytes32.from_hexstr(did_cr["latest_coin"])
+                )
             )
             assert did_coin_record is not None
             did_coin = did_coin_record.coin
