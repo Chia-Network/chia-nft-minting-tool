@@ -18,7 +18,7 @@ dev_dependencies = [
     "flake8==7.0.0",
     "mypy==1.10.0",
     "black==24.4.2",
-    "types-setuptools==69.5.0.20240519",
+    "types-setuptools==70.0.0.20240524",
     "pre-commit==3.5.0; python_version < '3.9'",
     "pre-commit==3.7.1; python_version >= '3.9'",
 ]
