@@ -20,7 +20,7 @@ dev_dependencies = [
     "black==24.4.2",
     "types-setuptools==70.0.0.20240524",
     "pre-commit==3.5.0; python_version < '3.9'",
-    "pre-commit==3.7.1; python_version >= '3.9'",
+    "pre-commit==3.8.0; python_version >= '3.9'",
 ]
 
 setup(
