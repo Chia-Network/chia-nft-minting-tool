@@ -8,7 +8,7 @@ dependencies = [
 ]
 
 dev_dependencies = [
-    "pylint==3.2.6",
+    "pylint==3.2.7",
     "pytest==8.3.2",
     "pytest-asyncio==0.23.8",
     "pytest-monitor==1.6.6; sys_platform == 'linux'",
