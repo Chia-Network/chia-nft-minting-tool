@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.rpc.full_node_rpc_client import FullNodeRpcClient
+from chia.rpc.wallet_request_types import NFTMintBulkResponse
 from chia.rpc.wallet_rpc_client import WalletRpcClient
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import INFINITE_COST
@@ -136,7 +137,7 @@ class Minter:
         assert royalty_percentage is not None
         assert royalty_address is not None
         for i in range(0, mint_total, chunk):
-            resp = await self.wallet_client.nft_mint_bulk(
+            resp: NFTMintBulkResponse = await self.wallet_client.nft_mint_bulk(
                 wallet_id=self.nft_wallet_id,
                 metadata_list=metadata_list[i : i + chunk],
                 target_list=target_list[i : i + chunk],
@@ -151,12 +152,12 @@ class Minter:
                 mint_from_did=mint_from_did,
                 tx_config=DEFAULT_TX_CONFIG,
             )
-            if not resp["success"]:
+            if not resp:
                 raise ValueError(
                     "SpendBundle could not be created for metadata rows: %s to %s"
                     % (i, i + chunk)
                 )
-            sb = SpendBundle.from_json_dict(resp["spend_bundle"])
+            sb = resp.spend_bundle
             spend_bundles.append(bytes(sb))
             next_coin = [
                 c for c in sb.additions() if c.puzzle_hash == funding_coin.puzzle_hash
@@ -223,7 +224,7 @@ class Minter:
                 return spend, 0
             total_fee = sb_cost * (fee_per_cost * attempt)
         print("Fee for inclusion: {}".format(total_fee))
-        fee_tx = await self.wallet_client.create_signed_transaction(
+        fee_tx = await self.wallet_client.create_signed_transactions(
             additions=[
                 {
                     "amount": fee_coin.amount - total_fee,
@@ -234,8 +235,8 @@ class Minter:
             fee=uint64(total_fee),
             tx_config=DEFAULT_TX_CONFIG,
         )
-        assert fee_tx.spend_bundle is not None
-        spend_with_fee = SpendBundle.aggregate([fee_tx.spend_bundle, spend])
+        assert fee_tx.signed_tx.spend_bundle is not None
+        spend_with_fee = SpendBundle.aggregate([fee_tx.signed_tx.spend_bundle, spend])
         return spend_with_fee, total_fee
 
     async def sb_in_mempool(self, sb_name: bytes32) -> bool:
@@ -365,11 +366,12 @@ class Minter:
             }
             for i in range(10):
                 try:
-                    offer, tr = await self.wallet_client.create_offer_for_ids(
+                    offer_resp = await self.wallet_client.create_offer_for_ids(
                         offer_dict,
                         fee=0,
                         tx_config=DEFAULT_TX_CONFIG,
                     )
+                    offer = offer_resp.offer
                     filepath = "offers/{}.offer".format(launcher_id)
                     assert offer is not None
                     with open(Path(filepath), "w") as file:
