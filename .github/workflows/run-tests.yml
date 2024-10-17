@@ -52,6 +52,7 @@ jobs:
           python3 -m venv venv
           if [[ ${{ matrix.os.runs-on }} == windows-latest ]]; then
             source ./venv/Scripts/activate
+            python -m pip install --upgrade pip
           else
             . ./venv/bin/activate
           fi
