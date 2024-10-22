@@ -16,7 +16,7 @@ dev_dependencies = [
     "isort==5.13.2",
     "faker==30.6.0",
     "flake8==7.1.1",
-    "mypy==1.12.0",
+    "mypy==1.12.1",
     "black==24.10.0",
     "types-setuptools==75.1.0.20241014",
     "pre-commit==3.5.0; python_version < '3.9'",
