@@ -43,7 +43,7 @@ jobs:
             . ./venv/bin/activate
           fi
           sed -i 's/chia-blockchain.*/chia-blockchain @ git+https:\/\/github.com\/Chia-Network\/chia-blockchain.git@main\",/g' setup.py
-          pip install --extra-index https://pypi.chia.net/simple/ --editable .[dev]
+          python -m pip install --extra-index https://pypi.chia.net/simple/ --editable .[dev]
           chia init
           echo -ne "\n" | chia dev sim create
           export CHIA_ROOT=~/.chia/simulator/main/
