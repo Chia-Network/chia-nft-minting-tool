@@ -5,7 +5,7 @@ For detailed setup and testing instructions, visit the [NFT Bulk Minting tool](h
 ## Setup Instructions
 - Stop any running wallet/node instances: `chia stop -d all`
 
-- Clone this repo, create/activate a new virtual environment and update pip. Note instructions for createing the python venv may vary depending on your OS
+- Clone this repo, create/activate a new virtual environment and update pip. Note instructions for creating the python venv may vary depending on your OS
 ```bash
 git clone https://github.com/Chia-Network/chia-nft-minting-tool.git
 cd chia-nft-minting-tool
