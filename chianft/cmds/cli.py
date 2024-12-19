@@ -120,9 +120,7 @@ def create_spend_bundles_cmd(
     """
 
     async def do_command() -> None:
-        maybe_clients = await get_node_and_wallet_clients(
-            node_rpc_port, wallet_rpc_port, fingerprint
-        )
+        maybe_clients = await get_node_and_wallet_clients(node_rpc_port, wallet_rpc_port, fingerprint)
         if maybe_clients is None:
             print("Failed to connect to wallet and node")
             return
@@ -145,7 +143,7 @@ def create_spend_bundles_cmd(
             )
             with open(bundle_output, "wb") as f:
                 pickle.dump(spend_bundles, f)
-            print("Successfully created {} spend bundles".format(len(spend_bundles)))
+            print(f"Successfully created {len(spend_bundles)} spend bundles")
         finally:
             node_client.close()
             wallet_client.close()
@@ -205,9 +203,7 @@ def submit_spend_bundles_cmd(
     """
 
     async def do_command() -> None:
-        maybe_clients = await get_node_and_wallet_clients(
-            node_rpc_port, wallet_rpc_port, fingerprint
-        )
+        maybe_clients = await get_node_and_wallet_clients(node_rpc_port, wallet_rpc_port, fingerprint)
         if maybe_clients is None:
             print("Failed to connect to wallet and node")
             return
@@ -224,9 +220,7 @@ def submit_spend_bundles_cmd(
                 spends.append(SpendBundle.from_bytes(spend_bytes))
 
             minter = Minter(wallet_client, node_client)
-            await minter.submit_spend_bundles(
-                spends, fee, create_sell_offer=create_sell_offer
-            )
+            await minter.submit_spend_bundles(spends, fee, create_sell_offer=create_sell_offer)
 
         finally:
             node_client.close()

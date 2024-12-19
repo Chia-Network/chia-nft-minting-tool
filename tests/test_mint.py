@@ -76,9 +76,7 @@ def test_mint_from_did(has_targets: bool) -> None:
                 output_file,
             ],
         )
-        result = runner.invoke(
-            cli, ["submit-spend-bundles", "--fee", str(10), output_file]
-        )
+        result = runner.invoke(cli, ["submit-spend-bundles", "--fee", str(10), output_file])
 
     # traceback.print_exception(*result.exc_info)
     # breakpoint()
@@ -116,9 +114,7 @@ def test_mint_from_xch(has_targets: bool) -> None:
             ],
         )
 
-        result = runner.invoke(
-            cli, ["submit-spend-bundles", "--fee", "10", output_file]
-        )
+        result = runner.invoke(cli, ["submit-spend-bundles", "--fee", "10", output_file])
 
     # traceback.print_exception(*result.exc_info)
     # breakpoint()

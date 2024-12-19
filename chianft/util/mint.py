@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import csv
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.rpc.full_node_rpc_client import FullNodeRpcClient
@@ -37,21 +37,13 @@ class Minter:
         nft_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.NFT)
         if nft_wallet_id is not None:
             if len(nft_wallets) > 1:
-                self.non_did_nft_wallet_ids = [
-                    wallet["id"]
-                    for wallet in nft_wallets
-                    if wallet["id"] != nft_wallet_id
-                ]
+                self.non_did_nft_wallet_ids = [wallet["id"] for wallet in nft_wallets if wallet["id"] != nft_wallet_id]
             self.nft_wallet_id = nft_wallet_id
             self.did_coin_id = None
             self.did_wallet_id: int = 0
 
-            did_id_for_nft = (
-                await self.wallet_client.get_nft_wallet_did(wallet_id=nft_wallet_id)
-            )["did_id"]
-            did_wallets = await self.wallet_client.get_wallets(
-                wallet_type=WalletType.DECENTRALIZED_ID
-            )
+            did_id_for_nft = (await self.wallet_client.get_nft_wallet_did(wallet_id=nft_wallet_id))["did_id"]
+            did_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.DECENTRALIZED_ID)
             for wallet in did_wallets:
                 did_info = await self.wallet_client.get_did_id(wallet_id=wallet["id"])
                 if did_info["my_did"] == did_id_for_nft:
@@ -61,17 +53,13 @@ class Minter:
         else:
             self.non_did_nft_wallet_ids = []
             for wallet in nft_wallets:
-                did_id = (
-                    await self.wallet_client.get_nft_wallet_did(wallet_id=wallet["id"])
-                )["did_id"]
+                did_id = (await self.wallet_client.get_nft_wallet_did(wallet_id=wallet["id"]))["did_id"]
                 if did_id is None:
                     self.non_did_nft_wallet_ids.append(wallet["id"])
                 else:
                     self.nft_wallet_id = wallet["id"]
 
-        xch_wallets = await self.wallet_client.get_wallets(
-            wallet_type=WalletType.STANDARD_WALLET
-        )
+        xch_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.STANDARD_WALLET)
         self.xch_wallet_id = xch_wallets[0]["id"]
 
     async def get_funding_coin(self, amount: int) -> Coin:
@@ -81,15 +69,10 @@ class Minter:
             coin_selection_config=DEFAULT_COIN_SELECTION_CONFIG,
         )
         if len(coins) > 1:
-            raise ValueError(
-                "Bulk minting requires a single coin with value greater than %s"
-                % amount
-            )
+            raise ValueError(f"Bulk minting requires a single coin with value greater than {amount}")
         return coins[0]
 
-    async def get_tx_from_mempool(
-        self, sb_name: bytes32
-    ) -> Tuple[bool, Optional[bytes32]]:
+    async def get_tx_from_mempool(self, sb_name: bytes32) -> tuple[bool, Optional[bytes32]]:
         mempool_items = await self.node_client.get_all_mempool_items()
         for item in mempool_items.items():
             if bytes32(hexstr_to_bytes(item[1]["spend_bundle_name"])) == sb_name:
@@ -106,29 +89,23 @@ class Minter:
         royalty_percentage: Optional[int] = 0,
         has_targets: Optional[bool] = True,
         chunk: Optional[int] = 25,
-    ) -> List[bytes]:
+    ) -> list[bytes]:
         await self.get_wallet_ids(wallet_id)
-        metadata_list, target_list = read_metadata_csv(
-            metadata_input, has_header=True, has_targets=has_targets
-        )
+        metadata_list, target_list = read_metadata_csv(metadata_input, has_header=True, has_targets=has_targets)
         mint_total = len(metadata_list)
         funding_coin: Coin = await self.get_funding_coin(mint_total)
         next_coin = funding_coin
         spend_bundles = []
         if mint_from_did:
             did = await self.wallet_client.get_did_id(wallet_id=self.did_wallet_id)
-            did_cr = await self.wallet_client.get_did_info(
-                coin_id=did["coin_id"], latest=True
-            )
-            did_coin_record: Optional[CoinRecord] = (
-                await self.node_client.get_coin_record_by_name(
-                    bytes32.from_hexstr(did_cr["latest_coin"])
-                )
+            did_cr = await self.wallet_client.get_did_info(coin_id=did["coin_id"], latest=True)
+            did_coin_record: Optional[CoinRecord] = await self.node_client.get_coin_record_by_name(
+                bytes32.from_hexstr(did_cr["latest_coin"])
             )
             assert did_coin_record is not None
             did_coin = did_coin_record.coin
             assert did_coin is not None
-            did_coin_dict: Optional[Dict[str, Any]] = did_coin.to_json_dict()
+            did_coin_dict: Optional[dict[str, Any]] = did_coin.to_json_dict()
         else:
             did_coin = None
             did_coin_dict = None
@@ -153,26 +130,20 @@ class Minter:
                 tx_config=DEFAULT_TX_CONFIG,
             )
             if not resp:
-                raise ValueError(
-                    "SpendBundle could not be created for metadata rows: %s to %s"
-                    % (i, i + chunk)
-                )
+                raise ValueError(f"SpendBundle could not be created for metadata rows: {i} to {i + chunk}")
             sb = resp.spend_bundle
             spend_bundles.append(bytes(sb))
-            next_coin = [
-                c for c in sb.additions() if c.puzzle_hash == funding_coin.puzzle_hash
-            ][0]
+            next_coin = next(c for c in sb.additions() if c.puzzle_hash == funding_coin.puzzle_hash)
             if mint_from_did:
                 assert did_coin is not None
-                did_lineage_parent = [
+                did_lineage_parent = next(
                     c for c in sb.removals() if c.name() == did_coin.name()
-                ][0].parent_coin_info.hex()
-                did_coin = [
+                ).parent_coin_info.hex()
+                did_coin = next(
                     c
                     for c in sb.additions()
-                    if (c.parent_coin_info == did_coin.name())
-                    and (c.amount == did_coin.amount)
-                ][0]
+                    if (c.parent_coin_info == did_coin.name()) and (c.amount == did_coin.amount)
+                )
                 assert did_coin is not None
                 did_coin_dict = did_coin.to_json_dict()
         return spend_bundles
@@ -199,7 +170,7 @@ class Minter:
         fee_coin: Coin,
         attempt: int,
         max_fee: Optional[int],
-    ) -> Tuple[SpendBundle, int]:
+    ) -> tuple[SpendBundle, int]:
         if max_fee:
             total_fee = max_fee
         else:
@@ -223,7 +194,7 @@ class Minter:
                 # No fee required
                 return spend, 0
             total_fee = sb_cost * (fee_per_cost * attempt)
-        print("Fee for inclusion: {}".format(total_fee))
+        print(f"Fee for inclusion: {total_fee}")
         fee_tx = await self.wallet_client.create_signed_transactions(
             additions=[
                 {
@@ -250,11 +221,7 @@ class Minter:
         # grab the NFT coins from the spend and check if they are visible to the node_client
         # we can't check against wallet client b/c they might be transferred during the mint spend
         removal_ids = [coin.name() for coin in sb.removals() if coin.amount == 0]
-        nft_list = [
-            coin
-            for coin in sb.additions()
-            if coin.amount == 1 and coin.parent_coin_info in removal_ids
-        ]
+        nft_list = [coin for coin in sb.additions() if coin.amount == 1 and coin.parent_coin_info in removal_ids]
         confirmed_nfts = 0
         for nft in nft_list:
             # Retry up to 10 times to find NFTs on node
@@ -269,11 +236,7 @@ class Minter:
         if confirmed_nfts == len(nft_list):
             return True
         else:
-            print(
-                "Only found {} of {} confirmed nfts".format(
-                    confirmed_nfts, len(nft_list)
-                )
-            )
+            print(f"Only found {confirmed_nfts} of {len(nft_list)} confirmed nfts")
             return False
 
     async def monitor_mempool(self, sb: SpendBundle) -> bool:
@@ -308,12 +271,9 @@ class Minter:
         max_fee: Optional[int],
     ) -> SpendBundle:
         max_retries = 10
-        total_fee = 0
         for j in range(max_retries):
-            final_sb, total_fee = await self.add_fee_to_spend(
-                sb, fee_coin, j + 1, max_fee
-            )
-            print("Submitting SB: {}".format(final_sb.name()))
+            final_sb, _total_fee = await self.add_fee_to_spend(sb, fee_coin, j + 1, max_fee)
+            print(f"Submitting SB: {final_sb.name()}")
             try:
                 resp = await self.node_client.push_tx(final_sb)
                 if resp["success"]:
@@ -323,11 +283,7 @@ class Minter:
                     if tx_confirmed:
                         return final_sb
                     else:
-                        print(
-                            "Spend was kicked from mempool. Retrying {} of {}".format(
-                                j, max_retries
-                            )
-                        )
+                        print(f"Spend was kicked from mempool. Retrying {j} of {max_retries}")
                         continue
             except ValueError as err:
                 error_msg = err.args[0]["error"]
@@ -340,24 +296,17 @@ class Minter:
 
         raise ValueError("Submit spend failed. Wait for a few blocks and retry")
 
-    async def get_unspent_spend_bundle(
-        self, spend_bundles: List[SpendBundle]
-    ) -> Tuple[Coin, int]:
+    async def get_unspent_spend_bundle(self, spend_bundles: list[SpendBundle]) -> tuple[Coin, int]:
         for i, sb in enumerate(spend_bundles):
-            xch_coin_to_spend = [coin for coin in sb.removals() if coin.amount > 1][0]
-            coin_record = await self.node_client.get_coin_record_by_name(
-                xch_coin_to_spend.name()
-            )
+            xch_coin_to_spend = next(coin for coin in sb.removals() if coin.amount > 1)
+            coin_record = await self.node_client.get_coin_record_by_name(xch_coin_to_spend.name())
             assert coin_record is not None
             if coin_record.spent_block_index == 0:
                 starting_spend_index: int = i
                 return xch_coin_to_spend, starting_spend_index
-        else:
-            raise ValueError("All spend bundles have been spent")
+        raise ValueError("All spend bundles have been spent")
 
-    async def create_offer(
-        self, launcher_ids: List[str], create_sell_offer: int
-    ) -> None:
+    async def create_offer(self, launcher_ids: list[str], create_sell_offer: int) -> None:
         assert self.wallet_client is not None
         for launcher_id in launcher_ids:
             offer_dict = {
@@ -372,7 +321,7 @@ class Minter:
                         tx_config=DEFAULT_TX_CONFIG,
                     )
                     offer = offer_resp.offer
-                    filepath = "offers/{}.offer".format(launcher_id)
+                    filepath = f"offers/{launcher_id}.offer"
                     assert offer is not None
                     with open(Path(filepath), "w") as file:
                         file.write(offer.to_bech32())
@@ -382,7 +331,6 @@ class Minter:
                     print("Retrying offer creation in 5 seconds")
                     await asyncio.sleep(5)
                     continue
-        return
 
     async def coin_in_mempool(self, funding_coin: Coin) -> Optional[SpendBundle]:
         # the raw spend bundle won't be included in mempool if it has fee added, so we have to check
@@ -396,14 +344,14 @@ class Minter:
 
     async def submit_spend_bundles(
         self,
-        spend_bundles: List[SpendBundle],
+        spend_bundles: list[SpendBundle],
         fee: Optional[int] = None,
         create_sell_offer: Optional[int] = None,
     ) -> None:
         await self.get_wallet_ids()
         funding_coin, sb_index = await self.get_unspent_spend_bundle(spend_bundles)
         if sb_index > 0:
-            print("Resuming from spend bundle: {}".format(sb_index))
+            print(f"Resuming from spend bundle: {sb_index}")
 
         # setup a directory for offers if needed
         if create_sell_offer:
@@ -413,12 +361,8 @@ class Minter:
         if fee:
             estimated_max_fee = len(spend_bundles) * fee
         else:
-            estimated_max_fee = (
-                len(spend_bundles) * self.spend_cost(spend_bundles[0]) * 5
-            )
-        csc = DEFAULT_COIN_SELECTION_CONFIG.override(
-            excluded_coin_ids=[funding_coin.name()]
-        )
+            estimated_max_fee = len(spend_bundles) * self.spend_cost(spend_bundles[0]) * 5
+        csc = DEFAULT_COIN_SELECTION_CONFIG.override(excluded_coin_ids=[funding_coin.name()])
         fee_coin = (
             await self.wallet_client.select_coins(
                 amount=estimated_max_fee,
@@ -434,44 +378,34 @@ class Minter:
             return None
 
         # Loop through the unspent bundles and try to submit them
-        print(
-            "Submitting a total of {} spend bundles".format(
-                len(spend_bundles[sb_index:])
-            )
-        )
+        print(f"Submitting a total of {len(spend_bundles[sb_index:])} spend bundles")
         for i, sb in enumerate(spend_bundles[sb_index:]):
             final_sb = await self.submit_spend(i, sb, fee_coin, fee)
 
-            fee_coin_list = [
-                coin
-                for coin in final_sb.additions()
-                if coin.parent_coin_info == fee_coin.name()
-            ]
+            fee_coin_list = [coin for coin in final_sb.additions() if coin.parent_coin_info == fee_coin.name()]
             if fee_coin_list:
                 fee_coin = fee_coin_list[0]
 
             launcher_ids = [
-                coin.name().hex()
-                for coin in sb.removals()
-                if coin.puzzle_hash == SINGLETON_LAUNCHER_PUZZLE_HASH
+                coin.name().hex() for coin in sb.removals() if coin.puzzle_hash == SINGLETON_LAUNCHER_PUZZLE_HASH
             ]
             if create_sell_offer:
                 await self.create_offer(launcher_ids, create_sell_offer)
-            print("Spendbundle {} Confirmed".format(sb_index + i))
+            print(f"Spendbundle {sb_index + i} Confirmed")
             bs = await self.node_client.get_blockchain_state()
             mempool_pc = bs["mempool_cost"] / bs["mempool_max_total_cost"]
-            print("Mempool utilization: {:.0%}".format(mempool_pc))
+            print(f"Mempool utilization: {mempool_pc:.0%}")
 
 
 def read_metadata_csv(
     file_path: Path,
     has_header: Optional[bool] = False,
     has_targets: Optional[bool] = False,
-) -> Tuple[List[Dict[str, Any]], List[str]]:
-    with open(file_path, "r") as f:
+) -> tuple[list[dict[str, Any]], list[str]]:
+    with open(file_path) as f:
         csv_reader = csv.reader(f)
         bulk_data = list(csv_reader)
-    metadata_list: List[Dict[str, Any]] = []
+    metadata_list: list[dict[str, Any]] = []
     if has_header:
         header_row = bulk_data[0]
         rows = bulk_data[1:]
@@ -492,9 +426,7 @@ def read_metadata_csv(
     list_headers = ["uris", "meta_uris", "license_uris"]
     targets = []
     for row in rows:
-        meta_dict: Dict[str, Any] = {
-            list_headers[i]: [] for i in range(len(list_headers))
-        }
+        meta_dict: dict[str, Any] = {list_headers[i]: [] for i in range(len(list_headers))}
         for i, header in enumerate(header_row):
             if header in list_headers:
                 meta_dict[header].append(row[i])
