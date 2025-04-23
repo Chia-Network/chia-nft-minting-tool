@@ -4,8 +4,8 @@ import csv
 from secrets import token_bytes
 
 import pytest
-from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.util.bech32m import encode_puzzle_hash
+from chia_rs.sized_bytes import bytes32
 from click.testing import CliRunner, Result
 from faker import Faker
 
