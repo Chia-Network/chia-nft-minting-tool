@@ -17,7 +17,6 @@ from chia.util.byte_types import hexstr_to_bytes
 from chia.wallet.singleton import SINGLETON_LAUNCHER_PUZZLE_HASH
 from chia.wallet.util.tx_config import DEFAULT_COIN_SELECTION_CONFIG, DEFAULT_TX_CONFIG
 from chia.wallet.util.wallet_types import WalletType
-
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint64
 
