@@ -11,14 +11,15 @@ from chia.rpc.wallet_request_types import NFTMintBulkResponse
 from chia.rpc.wallet_rpc_client import WalletRpcClient
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import INFINITE_COST
-from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_record import CoinRecord
 from chia.types.spend_bundle import SpendBundle
 from chia.util.byte_types import hexstr_to_bytes
-from chia.util.ints import uint64
 from chia.wallet.singleton import SINGLETON_LAUNCHER_PUZZLE_HASH
 from chia.wallet.util.tx_config import DEFAULT_COIN_SELECTION_CONFIG, DEFAULT_TX_CONFIG
 from chia.wallet.util.wallet_types import WalletType
+
+from chia_rs.sized_bytes import bytes32
+from chia_rs.sized_ints import uint64
 
 
 class Minter:
