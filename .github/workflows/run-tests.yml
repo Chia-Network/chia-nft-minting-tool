@@ -56,7 +56,7 @@ jobs:
           else
             . ./venv/bin/activate
           fi
-          python -m pip install --editable .[dev]
+          python -m pip install --extra-index https://pypi.chia.net/simple/ --editable .[dev]
           chia init
           echo -ne "\n" | chia dev sim create
           export CHIA_ROOT=~/.chia/simulator/main/
