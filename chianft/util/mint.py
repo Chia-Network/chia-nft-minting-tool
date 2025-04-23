@@ -5,7 +5,6 @@ import csv
 from pathlib import Path
 from typing import Any, Optional
 
-from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.rpc.full_node_rpc_client import FullNodeRpcClient
 from chia.rpc.wallet_request_types import NFTMintBulkResponse
 from chia.rpc.wallet_rpc_client import WalletRpcClient
@@ -19,6 +18,8 @@ from chia.wallet.util.tx_config import DEFAULT_COIN_SELECTION_CONFIG, DEFAULT_TX
 from chia.wallet.util.wallet_types import WalletType
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint64
+
+MAX_BLOCK_COST_CLVM = uint64(11000000000)
 
 
 class Minter:
@@ -160,7 +161,7 @@ class Minter:
         costs = 0
         for key, val in mempool_items.items():
             costs += val["cost"]
-        if costs + sb_cost >= DEFAULT_CONSTANTS.MAX_BLOCK_COST_CLVM:
+        if costs + sb_cost >= MAX_BLOCK_COST_CLVM:
             return True
         return False
 
