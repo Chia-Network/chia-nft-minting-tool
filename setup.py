@@ -18,7 +18,7 @@ dev_dependencies = [
     "ruff>=0.8.1",
     "faker==37.1.0",
     "mypy==1.15.0",
-    "types-setuptools==76.0.0.20250313",
+    "types-setuptools==80.7.0.20250516",
     "pre-commit==4.2.0; python_version >= '3.9'",
 ]
 
