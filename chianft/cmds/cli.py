@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 import click
-from chia.types.spend_bundle import SpendBundle
+from chia_rs import SpendBundle
 
 from chianft import __version__
 from chianft.util.clients import get_node_and_wallet_clients
@@ -18,7 +18,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 def monkey_patch_click() -> None:
     import click.core
 
-    click.core._verify_python3_env = lambda *args, **kwargs: 0  # type: ignore
+    click.core._verify_python3_env = lambda *args, **kwargs: 0
 
 
 @click.group(
@@ -104,7 +104,7 @@ def create_spend_bundles_cmd(
     metadata_input: Path,
     bundle_output: Path,
     wallet_id: int,
-    mint_from_did: Optional[bool] = False,
+    mint_from_did: bool = False,
     royalty_address: Optional[str] = "",
     royalty_percentage: Optional[int] = 0,
     has_targets: Optional[bool] = False,

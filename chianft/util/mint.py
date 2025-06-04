@@ -7,18 +7,18 @@ from typing import Any, Optional
 
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.rpc.full_node_rpc_client import FullNodeRpcClient
-from chia.rpc.wallet_request_types import NFTMintBulkResponse
+from chia.rpc.wallet_request_types import NFTGetWalletDID, NFTMintBulk, NFTMintBulkResponse, NFTMintMetadata
 from chia.rpc.wallet_rpc_client import WalletRpcClient
 from chia.types.blockchain_format.coin import Coin
-from chia.types.blockchain_format.program import INFINITE_COST
+from chia.types.blockchain_format.program import INFINITE_COST, run_with_cost
 from chia.types.coin_record import CoinRecord
-from chia.types.spend_bundle import SpendBundle
 from chia.util.byte_types import hexstr_to_bytes
 from chia.wallet.singleton import SINGLETON_LAUNCHER_PUZZLE_HASH
 from chia.wallet.util.tx_config import DEFAULT_COIN_SELECTION_CONFIG, DEFAULT_TX_CONFIG
 from chia.wallet.util.wallet_types import WalletType
+from chia_rs import SpendBundle
 from chia_rs.sized_bytes import bytes32
-from chia_rs.sized_ints import uint64
+from chia_rs.sized_ints import uint16, uint32, uint64
 
 
 class Minter:
@@ -42,18 +42,20 @@ class Minter:
             self.did_coin_id = None
             self.did_wallet_id: int = 0
 
-            did_id_for_nft = (await self.wallet_client.get_nft_wallet_did(wallet_id=nft_wallet_id))["did_id"]
+            did_id_for_nft = (
+                await self.wallet_client.get_nft_wallet_did(NFTGetWalletDID(wallet_id=uint32(nft_wallet_id)))
+            ).did_id
             did_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.DECENTRALIZED_ID)
             for wallet in did_wallets:
                 did_info = await self.wallet_client.get_did_id(wallet_id=wallet["id"])
-                if did_info["my_did"] == did_id_for_nft:
+                if did_id_for_nft is not None and did_info["my_did"] == did_id_for_nft:
                     self.did_coin_id = bytes32.from_hexstr(did_info["coin_id"])
                     self.did_wallet_id = wallet["id"]
                     break
         else:
             self.non_did_nft_wallet_ids = []
             for wallet in nft_wallets:
-                did_id = (await self.wallet_client.get_nft_wallet_did(wallet_id=wallet["id"]))["did_id"]
+                did_id = (await self.wallet_client.get_nft_wallet_did(NFTGetWalletDID(wallet_id=wallet["id"]))).did_id
                 if did_id is None:
                     self.non_did_nft_wallet_ids.append(wallet["id"])
                 else:
@@ -84,7 +86,7 @@ class Minter:
         metadata_input: Path,
         bundle_output: Path,
         wallet_id: int,
-        mint_from_did: Optional[bool] = False,
+        mint_from_did: bool = False,
         royalty_address: Optional[str] = "",
         royalty_percentage: Optional[int] = 0,
         has_targets: Optional[bool] = True,
@@ -105,28 +107,28 @@ class Minter:
             assert did_coin_record is not None
             did_coin = did_coin_record.coin
             assert did_coin is not None
-            did_coin_dict: Optional[dict[str, Any]] = did_coin.to_json_dict()
         else:
             did_coin = None
-            did_coin_dict = None
         did_lineage_parent = None
         assert chunk is not None
         assert royalty_percentage is not None
         assert royalty_address is not None
         for i in range(0, mint_total, chunk):
             resp: NFTMintBulkResponse = await self.wallet_client.nft_mint_bulk(
-                wallet_id=self.nft_wallet_id,
-                metadata_list=metadata_list[i : i + chunk],
-                target_list=target_list[i : i + chunk],
-                royalty_percentage=royalty_percentage,
-                royalty_address=royalty_address,
-                mint_number_start=i + 1,
-                mint_total=mint_total,
-                xch_coins=[next_coin.to_json_dict()],
-                xch_change_target=next_coin.to_json_dict()["puzzle_hash"],
-                did_coin=did_coin_dict,
-                did_lineage_parent=did_lineage_parent,
-                mint_from_did=mint_from_did,
+                NFTMintBulk(
+                    wallet_id=uint32(self.nft_wallet_id),
+                    metadata_list=metadata_list[i : i + chunk],
+                    target_list=target_list[i : i + chunk],
+                    royalty_percentage=uint16(royalty_percentage),
+                    royalty_address=royalty_address,
+                    mint_number_start=uint16(i + 1),
+                    mint_total=uint16(mint_total),
+                    xch_coins=[next_coin],
+                    xch_change_target=next_coin.puzzle_hash.hex(),
+                    did_coin=did_coin,
+                    did_lineage_parent=did_lineage_parent,
+                    mint_from_did=mint_from_did,
+                ),
                 tx_config=DEFAULT_TX_CONFIG,
             )
             if not resp:
@@ -136,22 +138,19 @@ class Minter:
             next_coin = next(c for c in sb.additions() if c.puzzle_hash == funding_coin.puzzle_hash)
             if mint_from_did:
                 assert did_coin is not None
-                did_lineage_parent = next(
-                    c for c in sb.removals() if c.name() == did_coin.name()
-                ).parent_coin_info.hex()
+                did_lineage_parent = next(c for c in sb.removals() if c.name() == did_coin.name()).parent_coin_info
                 did_coin = next(
                     c
                     for c in sb.additions()
                     if (c.parent_coin_info == did_coin.name()) and (c.amount == did_coin.amount)
                 )
                 assert did_coin is not None
-                did_coin_dict = did_coin.to_json_dict()
         return spend_bundles
 
     def spend_cost(self, spend_bundle: SpendBundle) -> int:
         sb_cost = 0
         for spend in spend_bundle.coin_spends:
-            cost, _ = spend.puzzle_reveal.run_with_cost(INFINITE_COST, spend.solution)
+            cost, _ = run_with_cost(spend.puzzle_reveal, INFINITE_COST, spend.solution)
             sb_cost += cost
         return sb_cost
 
@@ -401,11 +400,11 @@ def read_metadata_csv(
     file_path: Path,
     has_header: Optional[bool] = False,
     has_targets: Optional[bool] = False,
-) -> tuple[list[dict[str, Any]], list[str]]:
+) -> tuple[list[NFTMintMetadata], list[str]]:
     with open(file_path) as f:
         csv_reader = csv.reader(f)
         bulk_data = list(csv_reader)
-    metadata_list: list[dict[str, Any]] = []
+    metadata_list: list[NFTMintMetadata] = []
     if has_header:
         header_row = bulk_data[0]
         rows = bulk_data[1:]
@@ -434,5 +433,5 @@ def read_metadata_csv(
                 targets.append(row[i])
             else:
                 meta_dict[header] = row[i]
-        metadata_list.append(meta_dict)
+        metadata_list.append(NFTMintMetadata.from_json_dict(meta_dict))
     return metadata_list, targets
