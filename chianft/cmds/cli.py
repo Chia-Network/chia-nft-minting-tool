@@ -15,12 +15,6 @@ from chianft.util.mint import Minter
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
-def monkey_patch_click() -> None:
-    import click.core
-
-    click.core._verify_python3_env = lambda *args, **kwargs: 0  # type: ignore
-
-
 @click.group(
     help="\n  NFT minting for Chia Blockchain \n",
     context_settings=CONTEXT_SETTINGS,
@@ -232,7 +226,6 @@ def submit_spend_bundles_cmd(
 
 
 def main() -> None:
-    monkey_patch_click()
     asyncio.run(cli())  # pylint: disable=no-value-for-parameter
 
 
