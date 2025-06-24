@@ -6,8 +6,8 @@ import sys
 from secrets import token_bytes
 from typing import Any
 
-from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.util.bech32m import encode_puzzle_hash
+from chia_rs.sized_bytes import bytes32
 from faker import Faker
 
 fake = Faker()
