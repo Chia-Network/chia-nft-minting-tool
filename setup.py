@@ -15,7 +15,7 @@ dev_dependencies = [
     "pytest-monitor==1.6.6; sys_platform == 'linux'",
     "pytest-xdist==3.8.0",
     "ruff>=0.8.1",
-    "faker==37.5.3",
+    "faker==37.6.0",
     "mypy==1.17.1",
     "types-setuptools==80.9.0.20250809",
     "pre-commit==4.3.0; python_version >= '3.9'",
