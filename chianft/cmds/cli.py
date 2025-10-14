@@ -6,7 +6,8 @@ from pathlib import Path
 from typing import Optional
 
 import click
-from chia.types.spend_bundle import SpendBundle
+from chia_rs import SpendBundle
+from chia_rs.sized_ints import uint32
 
 from chianft import __version__
 from chianft.util.clients import get_node_and_wallet_clients
@@ -128,7 +129,7 @@ def create_spend_bundles_cmd(
             spend_bundles = await minter.create_spend_bundles(
                 metadata_input,
                 bundle_output,
-                wallet_id,
+                uint32(wallet_id),
                 mint_from_did,
                 royalty_address=royalty_address,
                 royalty_percentage=royalty_percentage,
