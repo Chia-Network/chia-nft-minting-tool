@@ -16,7 +16,7 @@ dev_dependencies = [
     "pytest-xdist==3.8.0",
     "ruff==0.12.11",
     "faker==37.5.3",
-    "mypy==1.17.1",
+    "mypy==1.18.2",
     "types-setuptools==80.9.0.20250822",
     "pre-commit==4.3.0; python_version >= '3.9'",
 ]
