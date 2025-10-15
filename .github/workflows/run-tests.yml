@@ -7,10 +7,10 @@ on:
     branches:
       - main
     tags:
-      - '**'
+      - "**"
   pull_request:
     branches:
-      - '**'
+      - "**"
 
 concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}--${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/long_lived/')) && github.sha || '' }}
@@ -37,14 +37,9 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Python environment
-        uses: actions/setup-python@v6
+        uses: Chia-Network/actions/setup-python@main
         with:
-          python-version: 3.9
-
-      - name: Setup simulator
-        uses: actions/setup-python@v6
-        with:
-          python-version: 3.9
+          python-version: 3.12
 
       - name: Test code with pytest
         shell: bash

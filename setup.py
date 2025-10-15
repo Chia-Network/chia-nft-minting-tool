@@ -18,7 +18,7 @@ dev_dependencies = [
     "faker==37.11.0",
     "mypy==1.18.2",
     "types-setuptools==80.9.0.20250822",
-    "pre-commit==4.3.0; python_version >= '3.9'",
+    "pre-commit==4.3.0; python_version >= '3.10'",
 ]
 
 setup(
@@ -41,7 +41,6 @@ setup(
     long_description_content_type="text/markdown",
     classifiers=[
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",

@@ -11,3 +11,4 @@ main.sym
 ,csv
 .pkl
 .idea/*
+.mypy_cache/
