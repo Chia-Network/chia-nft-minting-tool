@@ -50,7 +50,6 @@ ignore = [
     # Flake8 async
     # Should probably fix these
     "ASYNC230", # blocking-open-call-in-async-function
-    "ASYNC240", # no pathlib in async functions
     # Should probably fix these after dealing with shielding for anyio
     "ASYNC109", # async-function-with-timeout
 
