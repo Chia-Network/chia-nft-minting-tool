@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import pickle
 from pathlib import Path
-from typing import Optional
 
 import click
 from chia_rs import SpendBundle
@@ -99,14 +98,14 @@ def create_spend_bundles_cmd(
     metadata_input: Path,
     bundle_output: Path,
     wallet_id: int,
-    mint_from_did: Optional[bool] = False,
-    royalty_address: Optional[str] = "",
-    royalty_percentage: Optional[int] = 0,
-    has_targets: Optional[bool] = False,
-    chunk: Optional[int] = 25,
-    wallet_rpc_port: Optional[int] = None,
-    fingerprint: Optional[int] = None,
-    node_rpc_port: Optional[int] = None,
+    mint_from_did: bool | None = False,
+    royalty_address: str | None = "",
+    royalty_percentage: int | None = 0,
+    has_targets: bool | None = False,
+    chunk: int | None = 25,
+    wallet_rpc_port: int | None = None,
+    fingerprint: int | None = None,
+    node_rpc_port: int | None = None,
 ) -> None:
     """
     \b
@@ -186,11 +185,11 @@ def create_spend_bundles_cmd(
 )
 def submit_spend_bundles_cmd(
     bundle_input: Path,
-    fee: Optional[int] = None,
-    create_sell_offer: Optional[int] = None,
-    wallet_rpc_port: Optional[int] = None,
-    fingerprint: Optional[int] = None,
-    node_rpc_port: Optional[int] = None,
+    fee: int | None = None,
+    create_sell_offer: int | None = None,
+    wallet_rpc_port: int | None = None,
+    fingerprint: int | None = None,
+    node_rpc_port: int | None = None,
 ) -> None:
     """
     \b
