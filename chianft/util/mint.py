@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import csv
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.full_node.full_node_rpc_client import FullNodeRpcClient
@@ -39,7 +39,7 @@ class Minter:
 
     async def get_wallet_ids(
         self,
-        nft_wallet_id: Optional[uint32] = None,
+        nft_wallet_id: uint32 | None = None,
     ) -> None:
         nft_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.NFT)
         if nft_wallet_id is not None:
@@ -79,7 +79,7 @@ class Minter:
             raise ValueError(f"Bulk minting requires a single coin with value greater than {amount}")
         return coins[0]
 
-    async def get_tx_from_mempool(self, sb_name: bytes32) -> tuple[bool, Optional[bytes32]]:
+    async def get_tx_from_mempool(self, sb_name: bytes32) -> tuple[bool, bytes32 | None]:
         mempool_items = await self.node_client.get_all_mempool_items()
         for item in mempool_items.items():
             if bytes32(hexstr_to_bytes(item[1]["spend_bundle_name"])) == sb_name:
@@ -91,11 +91,11 @@ class Minter:
         metadata_input: Path,
         bundle_output: Path,
         wallet_id: uint32,
-        mint_from_did: Optional[bool] = False,
-        royalty_address: Optional[str] = "",
-        royalty_percentage: Optional[int] = 0,
-        has_targets: Optional[bool] = True,
-        chunk: Optional[int] = 25,
+        mint_from_did: bool | None = False,
+        royalty_address: str | None = "",
+        royalty_percentage: int | None = 0,
+        has_targets: bool | None = True,
+        chunk: int | None = 25,
     ) -> list[bytes]:
         await self.get_wallet_ids(wallet_id)
         metadata_list, target_list = read_metadata_csv(metadata_input, has_header=True, has_targets=has_targets)
@@ -106,7 +106,7 @@ class Minter:
         if mint_from_did:
             did = await self.wallet_client.get_did_id(DIDGetDID(self.did_wallet_id))
             did_cr = await self.wallet_client.get_did_info(DIDGetInfo(did.my_did, latest=True))
-            did_coin_record: Optional[CoinRecord] = await self.node_client.get_coin_record_by_name(did_cr.latest_coin)
+            did_coin_record: CoinRecord | None = await self.node_client.get_coin_record_by_name(did_cr.latest_coin)
             assert did_coin_record is not None
             did_coin = did_coin_record.coin
             assert did_coin is not None
@@ -173,7 +173,7 @@ class Minter:
         spend: SpendBundle,
         fee_coin: Coin,
         attempt: int,
-        max_fee: Optional[int],
+        max_fee: int | None,
     ) -> tuple[SpendBundle, int]:
         if max_fee:
             total_fee = max_fee
@@ -272,7 +272,7 @@ class Minter:
         i: int,
         sb: SpendBundle,
         fee_coin: Coin,
-        max_fee: Optional[int],
+        max_fee: int | None,
     ) -> SpendBundle:
         max_retries = 10
         for j in range(max_retries):
@@ -336,7 +336,7 @@ class Minter:
                     await asyncio.sleep(5)
                     continue
 
-    async def coin_in_mempool(self, funding_coin: Coin) -> Optional[SpendBundle]:
+    async def coin_in_mempool(self, funding_coin: Coin) -> SpendBundle | None:
         # the raw spend bundle won't be included in mempool if it has fee added, so we have to check
         # for matching funding coin name in the parent ids of the additions
         mempool_items = await self.node_client.get_all_mempool_items()
@@ -349,8 +349,8 @@ class Minter:
     async def submit_spend_bundles(
         self,
         spend_bundles: list[SpendBundle],
-        fee: Optional[int] = None,
-        create_sell_offer: Optional[int] = None,
+        fee: int | None = None,
+        create_sell_offer: int | None = None,
     ) -> None:
         await self.get_wallet_ids()
         funding_coin, sb_index = await self.get_unspent_spend_bundle(spend_bundles)
@@ -403,8 +403,8 @@ class Minter:
 
 def read_metadata_csv(
     file_path: Path,
-    has_header: Optional[bool] = False,
-    has_targets: Optional[bool] = False,
+    has_header: bool | None = False,
+    has_targets: bool | None = False,
 ) -> tuple[list[dict[str, Any]], list[str]]:
     with open(file_path) as f:
         csv_reader = csv.reader(f)

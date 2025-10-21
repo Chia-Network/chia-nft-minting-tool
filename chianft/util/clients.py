@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pprint import pprint
-from typing import Optional
 
 import aiohttp
 from chia.full_node.full_node_rpc_client import FullNodeRpcClient
@@ -12,8 +11,8 @@ from chia_rs.sized_ints import uint16
 
 
 async def get_node_client(
-    full_node_rpc_port: Optional[int],
-) -> Optional[FullNodeRpcClient]:
+    full_node_rpc_port: int | None,
+) -> FullNodeRpcClient | None:
     try:
         if full_node_rpc_port is None:
             config = load_config(DEFAULT_ROOT_PATH, "config.yaml")
@@ -32,8 +31,8 @@ async def get_node_client(
 
 
 async def get_wallet_client(
-    wallet_rpc_port: Optional[int],
-) -> Optional[WalletRpcClient]:
+    wallet_rpc_port: int | None,
+) -> WalletRpcClient | None:
     try:
         if wallet_rpc_port is None:
             config = load_config(DEFAULT_ROOT_PATH, "config.yaml")
@@ -50,10 +49,10 @@ async def get_wallet_client(
 
 
 async def get_node_and_wallet_clients(
-    full_node_rpc_port: Optional[int],
-    wallet_rpc_port: Optional[int],
-    fingerprint: Optional[int],
-) -> Optional[tuple[Optional[FullNodeRpcClient], Optional[WalletRpcClient]]]:
+    full_node_rpc_port: int | None,
+    wallet_rpc_port: int | None,
+    fingerprint: int | None,
+) -> tuple[FullNodeRpcClient | None, WalletRpcClient | None] | None:
     try:
         full_node_client = await get_node_client(full_node_rpc_port)
         wallet_client = await get_wallet_client(wallet_rpc_port)
