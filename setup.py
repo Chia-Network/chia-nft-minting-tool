@@ -14,7 +14,7 @@ dev_dependencies = [
     "pytest-asyncio==1.2.0",
     "pytest-monitor==1.6.6; sys_platform == 'linux'",
     "pytest-xdist==3.8.0",
-    "ruff==0.14.3",
+    "ruff==0.14.6",
     "faker==37.11.0",
     "mypy==1.18.2",
     "types-setuptools==80.9.0.20250822",
