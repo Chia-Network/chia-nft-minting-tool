@@ -17,10 +17,12 @@ from chia.wallet.util.wallet_types import WalletType
 from chia.wallet.wallet_request_types import (
     DIDGetDID,
     DIDGetInfo,
+    GetWallets,
     NFTGetWalletDID,
     NFTMintBulk,
     NFTMintBulkResponse,
     NFTMintMetadata,
+    SelectCoins,
 )
 from chia.wallet.wallet_rpc_client import WalletRpcClient
 from chia_rs import SpendBundle
@@ -41,43 +43,52 @@ class Minter:
         self,
         nft_wallet_id: uint32 | None = None,
     ) -> None:
-        nft_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.NFT)
+        nft_wallets_response = await self.wallet_client.get_wallets(request=GetWallets(type=uint16(WalletType.NFT)))
+        nft_wallets = nft_wallets_response.wallets
         if nft_wallet_id is not None:
             if len(nft_wallets) > 1:
-                self.non_did_nft_wallet_ids = [wallet["id"] for wallet in nft_wallets if wallet["id"] != nft_wallet_id]
+                self.non_did_nft_wallet_ids = [wallet.id for wallet in nft_wallets if wallet.id != nft_wallet_id]
             self.nft_wallet_id = nft_wallet_id
             self.did_coin_id = None
             self.did_wallet_id = uint32(0)
 
             did_id_for_nft = await self.wallet_client.get_nft_wallet_did(NFTGetWalletDID(nft_wallet_id))
-            did_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.DECENTRALIZED_ID)
+            did_wallets_response = await self.wallet_client.get_wallets(
+                request=GetWallets(type=uint16(WalletType.DECENTRALIZED_ID))
+            )
+            did_wallets = did_wallets_response.wallets
             for wallet in did_wallets:
-                did_info = await self.wallet_client.get_did_id(DIDGetDID(wallet["id"]))
+                did_info = await self.wallet_client.get_did_id(DIDGetDID(wallet.id))
                 if did_info.my_did == did_id_for_nft.did_id:
                     self.did_coin_id = did_info.coin_id
-                    self.did_wallet_id = wallet["id"]
+                    self.did_wallet_id = wallet.id
                     break
         else:
             self.non_did_nft_wallet_ids = []
             for wallet in nft_wallets:
-                did_id = await self.wallet_client.get_nft_wallet_did(NFTGetWalletDID(wallet["id"]))
+                did_id = await self.wallet_client.get_nft_wallet_did(NFTGetWalletDID(wallet.id))
                 if did_id is None:
-                    self.non_did_nft_wallet_ids.append(wallet["id"])
+                    self.non_did_nft_wallet_ids.append(wallet.id)
                 else:
-                    self.nft_wallet_id = wallet["id"]
+                    self.nft_wallet_id = wallet.id
 
-        xch_wallets = await self.wallet_client.get_wallets(wallet_type=WalletType.STANDARD_WALLET)
-        self.xch_wallet_id = xch_wallets[0]["id"]
+        xch_wallets_response = await self.wallet_client.get_wallets(
+            request=GetWallets(type=uint16(WalletType.STANDARD_WALLET))
+        )
+        xch_wallets = xch_wallets_response.wallets
+        self.xch_wallet_id = xch_wallets[0].id
 
     async def get_funding_coin(self, amount: int) -> Coin:
-        coins = await self.wallet_client.select_coins(
-            amount=amount,
-            wallet_id=self.xch_wallet_id,
-            coin_selection_config=DEFAULT_COIN_SELECTION_CONFIG,
+        coins_response = await self.wallet_client.select_coins(
+            request=SelectCoins.from_coin_selection_config(
+                amount=uint64(amount),
+                wallet_id=self.xch_wallet_id,
+                coin_selection_config=DEFAULT_COIN_SELECTION_CONFIG,
+            )
         )
-        if len(coins) > 1:
+        if len(coins_response.coins) > 1:
             raise ValueError(f"Bulk minting requires a single coin with value greater than {amount}")
-        return coins[0]
+        return coins_response.coins[0]
 
     async def get_tx_from_mempool(self, sb_name: bytes32) -> tuple[bool, bytes32 | None]:
         mempool_items = await self.node_client.get_all_mempool_items()
@@ -313,7 +324,7 @@ class Minter:
     async def create_offer(self, launcher_ids: list[str], create_sell_offer: int) -> None:
         assert self.wallet_client is not None
         for launcher_id in launcher_ids:
-            offer_dict = {
+            offer_dict: dict[uint32 | str, int] = {
                 launcher_id: -1,
                 self.xch_wallet_id: int(create_sell_offer),
             }
@@ -367,13 +378,14 @@ class Minter:
         else:
             estimated_max_fee = len(spend_bundles) * self.spend_cost(spend_bundles[0]) * 5
         csc = DEFAULT_COIN_SELECTION_CONFIG.override(excluded_coin_ids=[funding_coin.name()])
-        fee_coin = (
-            await self.wallet_client.select_coins(
-                amount=estimated_max_fee,
+        fee_coin_response = await self.wallet_client.select_coins(
+            request=SelectCoins.from_coin_selection_config(
+                amount=uint64(estimated_max_fee),
                 wallet_id=self.xch_wallet_id,
                 coin_selection_config=csc,
             )
-        )[0]
+        )
+        fee_coin = fee_coin_response.coins[0]
 
         # check current sb is not in mempool, and if it is wait for it to confirm and adjust sb_index
         last_sb = await self.coin_in_mempool(funding_coin)
