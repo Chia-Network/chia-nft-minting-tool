@@ -9,12 +9,14 @@ from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.full_node.full_node_rpc_client import FullNodeRpcClient
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import INFINITE_COST, run_with_cost
-from chia.types.coin_record import CoinRecord
 from chia.util.byte_types import hexstr_to_bytes
 from chia.wallet.singleton import SINGLETON_LAUNCHER_PUZZLE_HASH
 from chia.wallet.util.tx_config import DEFAULT_COIN_SELECTION_CONFIG, DEFAULT_TX_CONFIG
 from chia.wallet.util.wallet_types import WalletType
 from chia.wallet.wallet_request_types import (
+    Addition,
+    CreateOfferForIDs,
+    CreateSignedTransaction,
     DIDGetDID,
     DIDGetInfo,
     GetWallets,
@@ -25,7 +27,7 @@ from chia.wallet.wallet_request_types import (
     SelectCoins,
 )
 from chia.wallet.wallet_rpc_client import WalletRpcClient
-from chia_rs import SpendBundle
+from chia_rs import CoinRecord, SpendBundle
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint16, uint32, uint64
 
@@ -211,14 +213,16 @@ class Minter:
             total_fee = sb_cost * (fee_per_cost * attempt)
         print(f"Fee for inclusion: {total_fee}")
         fee_tx = await self.wallet_client.create_signed_transactions(
-            additions=[
-                {
-                    "amount": fee_coin.amount - total_fee,
-                    "puzzle_hash": fee_coin.puzzle_hash,
-                }
-            ],
-            coins=[fee_coin],
-            fee=uint64(total_fee),
+            CreateSignedTransaction(
+                additions=[
+                    Addition(
+                        amount=uint64(fee_coin.amount - total_fee),
+                        puzzle_hash=fee_coin.puzzle_hash,
+                    )
+                ],
+                coins=[fee_coin],
+                fee=uint64(total_fee),
+            ),
             tx_config=DEFAULT_TX_CONFIG,
         )
         assert fee_tx.signed_tx.spend_bundle is not None
@@ -324,15 +328,14 @@ class Minter:
     async def create_offer(self, launcher_ids: list[str], create_sell_offer: int) -> None:
         assert self.wallet_client is not None
         for launcher_id in launcher_ids:
-            offer_dict: dict[uint32 | str, int] = {
-                launcher_id: -1,
-                self.xch_wallet_id: int(create_sell_offer),
+            offer_dict: dict[str, str] = {
+                launcher_id: "-1",
+                str(self.xch_wallet_id): str(create_sell_offer),
             }
             for i in range(10):
                 try:
                     offer_resp = await self.wallet_client.create_offer_for_ids(
-                        offer_dict,
-                        fee=0,
+                        CreateOfferForIDs(offer=offer_dict, fee=uint64(0)),
                         tx_config=DEFAULT_TX_CONFIG,
                     )
                     offer = offer_resp.offer
