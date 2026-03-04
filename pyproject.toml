@@ -1,6 +1,56 @@
 [build-system]
 requires = [
     "setuptools>=80",
-    "setuptools_scm[toml]>=8",
+    "setuptools-scm[simple]>=9.2",
 ]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "chianft"
+dynamic = ["version"]
+description = "Chia NFT minting toolkit"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+authors = [
+    { name = "CNI", email = "hello@chia.net" },
+]
+keywords = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: Apache Software License",
+    "Topic :: Security :: Cryptography",
+]
+dependencies = [
+    "chia-blockchain==2.6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.4.2",
+    "pytest-asyncio==1.3.0",
+    "pytest-monitor==1.6.6; sys_platform == 'linux'",
+    "pytest-xdist==3.8.0",
+    "ruff==0.14.6",
+    "faker==40.5.1",
+    "mypy==1.19.1",
+    "types-setuptools==82.0.0.20260210",
+    "pre-commit==4.5.1; python_version >= '3.10'",
+]
+
+[project.urls]
+Homepage = "https://github.com/Chia-Network"
+Bug-Reports = "https://github.com/Chia-Network/chia-nft-minting-tool"
+Source = "https://github.com/Chia-Network/chia-nft-minting-tool"
+
+[project.scripts]
+chianft = "chianft.cmds.cli:main"
+
+[tool.setuptools.packages.find]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.clvm", "*.clvm.hex", "*.clib", "*.clsp", "*.clsp.hex"]
