@@ -54,13 +54,13 @@ class Minter:
             self.did_coin_id = None
             self.did_wallet_id = uint32(0)
 
-            did_id_for_nft = await self.wallet_client.get_nft_wallet_did(NFTGetWalletDID(nft_wallet_id))
+            did_id_for_nft = await self.wallet_client.get_nft_wallet_did(NFTGetWalletDID(wallet_id=nft_wallet_id))
             did_wallets_response = await self.wallet_client.get_wallets(
                 request=GetWallets(type=uint16(WalletType.DECENTRALIZED_ID))
             )
             did_wallets = did_wallets_response.wallets
             for wallet in did_wallets:
-                did_info = await self.wallet_client.get_did_id(DIDGetDID(wallet.id))
+                did_info = await self.wallet_client.get_did_id(DIDGetDID(wallet_id=wallet.id))
                 if did_info.my_did == did_id_for_nft.did_id:
                     self.did_coin_id = did_info.coin_id
                     self.did_wallet_id = wallet.id
@@ -68,7 +68,7 @@ class Minter:
         else:
             self.non_did_nft_wallet_ids = []
             for wallet in nft_wallets:
-                did_id = await self.wallet_client.get_nft_wallet_did(NFTGetWalletDID(wallet.id))
+                did_id = await self.wallet_client.get_nft_wallet_did(NFTGetWalletDID(wallet_id=wallet.id))
                 if did_id is None:
                     self.non_did_nft_wallet_ids.append(wallet.id)
                 else:
@@ -117,8 +117,8 @@ class Minter:
         next_coin = funding_coin
         spend_bundles = []
         if mint_from_did:
-            did = await self.wallet_client.get_did_id(DIDGetDID(self.did_wallet_id))
-            did_cr = await self.wallet_client.get_did_info(DIDGetInfo(did.my_did, latest=True))
+            did = await self.wallet_client.get_did_id(DIDGetDID(wallet_id=self.did_wallet_id))
+            did_cr = await self.wallet_client.get_did_info(DIDGetInfo(coin_id=did.my_did, latest=True))
             did_coin_record: CoinRecord | None = await self.node_client.get_coin_record_by_name(did_cr.latest_coin)
             assert did_coin_record is not None
             did_coin = did_coin_record.coin
