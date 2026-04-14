@@ -37,7 +37,7 @@ dev = [
     "ruff==0.14.6",
     "faker==40.12.0",
     "mypy==1.19.1",
-    "types-setuptools==82.0.0.20260210",
+    "types-setuptools==82.0.0.20260402",
     "pre-commit==4.5.1; python_version >= '3.10'",
 ]
 
