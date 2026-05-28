@@ -38,7 +38,7 @@ dev = [
     "faker==40.18.0",
     "mypy==1.19.1",
     "types-setuptools==82.0.0.20260518",
-    "pre-commit==4.5.1; python_version >= '3.10'",
+    "pre-commit==4.6.0; python_version >= '3.10'",
 ]
 
 [project.urls]
