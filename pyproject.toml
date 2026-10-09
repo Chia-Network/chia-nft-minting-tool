@@ -26,7 +26,7 @@ classifiers = [
 ]
 dependencies = [
     "chia-blockchain==2.7.4",
-    "click<8.5",
+    "click<8.6",
 ]
 
 [project.optional-dependencies]
